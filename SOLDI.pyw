@@ -15,11 +15,13 @@ import sys
 
 main_window = Tk()
 
+
 def check_admin_privileges():
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
     except Exception:
         return False
+
 
 class App:
     def __init__(self, whitelisted_domains, unlock_password):
@@ -81,8 +83,8 @@ class App:
         return False
 
     def generate_allowed_sites_html(self):
-            with open(self.html_path, "w", encoding="utf-8") as f:
-                f.write("""
+        with open(self.html_path, "w", encoding="utf-8") as f:
+            f.write("""
     <!DOCTYPE html>
     <html lang="ru">
     <head>
@@ -222,10 +224,10 @@ class App:
 
             <ul class="site-list">
     """)
-                for site in self.whitelisted_domains:
-                    f.write(
-                        f'            <li class="site-item"><a href="https://{site}" target="_self" class="site-link">{site}</a></li>\n')
-                f.write("""        </ul>
+            for site in self.whitelisted_domains:
+                f.write(
+                    f'            <li class="site-item"><a href="https://{site}" target="_self" class="site-link">{site}</a></li>\n')
+            f.write("""        </ul>
 
             <div class="footer">
                 <p>Для выхода из программы закройте браузер и введите пароль администратора</p>
@@ -234,8 +236,9 @@ class App:
     </body>
     </html>
     """)
-            print("HTML-файл создан")
-            return "file:///" + self.html_path.replace("\\", "/")
+
+        return "file:///" + self.html_path.replace("\\", "/")
+
     def launch_controlled_browser(self):
         if self.browser_driver is not None:
             try:
@@ -266,7 +269,7 @@ class App:
 
             self.browser_state = 2
         except Exception as e:
-            print(e, 2)
+
             self.browser_driver = None
 
     def verify_browser_process_active(self):
@@ -332,7 +335,7 @@ class App:
         lock_screen.configure(bg='black')
 
         warning_label = Label(lock_screen, text="Браузер был закрыт!\nВведите пароль, чтобы выйти.",
-                      font=("Arial", 30), fg="white", bg="black")
+                              font=("Arial", 30), fg="white", bg="black")
         warning_label.pack(pady=100)
 
         password_entry = Entry(lock_screen, font=("Arial", 30), show="*")
@@ -348,7 +351,6 @@ class App:
         while True:
             try:
                 if not self.verify_browser_process_active():
-                    print(self.verify_browser_process_active())
                     self.display_security_lock_screen()
                     continue
                 self.close_unauthorized_tabs()
@@ -367,7 +369,7 @@ class App:
             for handle in self.browser_driver.window_handles[1:]:
                 try:
                     self.browser_driver.switch_to.window(handle)
-                    print(self.browser_driver.window_handles[1:])
+
                     self.browser_driver.execute_script("window.close();")
                     self.browser_driver.implicitly_wait(0.05)
                 except Exception:
@@ -382,11 +384,11 @@ class App:
                 return
             if not any(site in current_url for site in self.whitelisted_domains):
                 local_page = self.generate_allowed_sites_html()
-                print(local_page, "создан")
+
                 self.browser_driver.get(local_page)
-                print("открыт")
+
         except WebDriverException as e:
-            print(e, 1)
+
             self.browser_driver = None
 
     def terminate_unauthorized_edge_instances(self):
@@ -433,10 +435,12 @@ class App:
         except Exception:
             pass
 
+
 def require_admin_privileges():
     if not check_admin_privileges():
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
         sys.exit()
+
 
 def main():
     require_admin_privileges()
@@ -502,7 +506,8 @@ def main():
     confirm_button = Button(main_window, text="Ввести ссылку", font=("arial", 18), command=add_allowed_website)
     confirm_button.pack()
     confirm_button.place(x=1440 // 2 - 100, y=500)
-    next_button = Button(main_window, text="Окончить ввод ссылок", font=("arial", 16), command=prompt_for_password_setup)
+    next_button = Button(main_window, text="Окончить ввод ссылок", font=("arial", 16),
+                         command=prompt_for_password_setup)
     next_button.place(x=1440 // 2 - 100, y=550)
     main_window.attributes('-fullscreen', True)
     main_window.mainloop()
