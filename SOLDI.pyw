@@ -13,77 +13,74 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
 import sys
 
-window = Tk()
+main_window = Tk()
 
-
-
-def is_admin():
+def check_admin_privileges():
     try:
         return ctypes.windll.shell32.IsUserAnAdmin()
     except Exception:
         return False
 
-
 class App:
-    def __init__(self, allowed_sites, password):
-        self.allowed_sites = allowed_sites
-        self.password = password
+    def __init__(self, whitelisted_domains, unlock_password):
+        self.whitelisted_domains = whitelisted_domains
+        self.unlock_password = unlock_password
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.html_path = os.path.join(self.script_dir, "links.html")
-        self.euphoria()
-        self.win.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.initialize_app_state()
+        self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
-    def euphoria(self):
-        self.mutex = None
-        self.driv = None
-        self.win = None
-        self.crowning = True
-        self.scroatch = True
-        self.scratch = 1
-        self.really()
+    def initialize_app_state(self):
+        self.browser_lock_mutex = None
+        self.browser_driver = None
+        self.main_window = None
+        self.is_running = True
+        self.is_monitoring_active = True
+        self.browser_state = 1
+        self.setup_browser_environment()
 
-    def really(self):
-        if self.is_browser_already_running():
+    def setup_browser_environment(self):
+        if self.check_browser_process_running():
             return
 
-        self.mutex = self.create_mutex()
-        if not self.mutex:
+        self.browser_lock_mutex = self.create_browser_lock_mutex()
+        if not self.browser_lock_mutex:
             return
-        self.local_page = self.create_links_page()
+        self.local_page_url = self.generate_allowed_sites_html()
 
-        self.start_browser()
+        self.launch_controlled_browser()
 
-        self.win = Tk()
-        self.win.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.main_window = Tk()
+        self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
-        threading.Thread(target=self.check_tabs_loop, daemon=True).start()
-        threading.Thread(target=self.check_window_state_loop, daemon=True).start()
-        threading.Thread(target=self.terminate_taskmgr, daemon=True).start()
+        threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
+        threading.Thread(target=self.enforce_browser_window_state, daemon=True).start()
+        threading.Thread(target=self.prevent_task_manager_usage, daemon=True).start()
 
-        self.win.mainloop()
+        self.main_window.mainloop()
 
-    def create_mutex(self):
+    def create_browser_lock_mutex(self):
         mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\EdgeBrowserLock")
         if not mutex:
             return None
         return mutex
 
-    def on_closing(self):
+    def handle_window_close(self):
         pass
 
-    def release_mutex(self):
-        if self.mutex :
-            ctypes.windll.kernel32.CloseHandle(self.mutex)
-            self.mutex = None
+    def release_browser_lock_mutex(self):
+        if self.browser_lock_mutex:
+            ctypes.windll.kernel32.CloseHandle(self.browser_lock_mutex)
+            self.browser_lock_mutex = None
 
-    def is_browser_already_running(self):
+    def check_browser_process_running(self):
         mutex = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, "Global\\EdgeBrowserLock")
         if mutex:
             ctypes.windll.kernel32.CloseHandle(mutex)
             return True
         return False
 
-    def create_links_page(self):
+    def generate_allowed_sites_html(self):
         with open(self.html_path, "w", encoding="utf-8") as f:
             f.write("""
 <html><head><title>Каталог сайтов</title>
@@ -97,20 +94,19 @@ class App:
 <body style='font-size:24px;'>
 <h1>Разрешённые сайты</h1><ul>
 """)
-            for site in self.allowed_sites:
+            for site in self.whitelisted_domains:
                 f.write(f'<li><a href="https://{site}" target="_self">{site}</a></li>')
             f.write("</ul></body></html>")
-        print("файл создан")
+        print("HTML-файл создан")
         return "file:///" + self.html_path.replace("\\", "/")
 
-    def start_browser(self):
-        if self.driv is not None:
+    def launch_controlled_browser(self):
+        if self.browser_driver is not None:
             try:
-                self.driv.quit()
+                self.browser_driver.quit()
             except Exception as e:
                 pass
-
-            self.driv = None
+            self.browser_driver = None
 
         options = Options()
         self.user_data_dir = f"C:\\Temp\\EdgePythonProfile_{uuid.uuid4()}"
@@ -125,45 +121,40 @@ class App:
         options.add_argument("--app-name=cara")
 
         try:
-            self.driv = webdriver.Edge(options=options)
-            WebDriverWait(self.driv, 3).until(EC.number_of_windows_to_be(1))
-            self.driv.get(self.local_page)
-            self.driv.implicitly_wait(1)
-            self.driv.maximize_window()
-            self.driv.execute_script("document.title = 'edgegi';")
+            self.browser_driver = webdriver.Edge(options=options)
+            WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
+            self.browser_driver.get(self.local_page_url)
+            self.browser_driver.implicitly_wait(1)
+            self.browser_driver.maximize_window()
+            self.browser_driver.execute_script("document.title = 'edgegi';")
 
-            self.scratch = 2
+            self.browser_state = 2
         except Exception as e:
             print(e, 2)
-            self.driv = None
+            self.browser_driver = None
 
-    def is_browser_alive(self):
-        if self.driv is None:
+    def verify_browser_process_active(self):
+        if self.browser_driver is None:
             return False
         try:
-            _ = self.driv.window_handles
+            _ = self.browser_driver.window_handles
             return True
         except WebDriverException:
             return False
 
-    def show_fullscreen_alert(self):
+    def display_security_lock_screen(self):
         def close_program():
-            if entry.get() == self.password:
-
+            if password_entry.get() == self.unlock_password:
                 try:
                     if os.path.exists(self.html_path):
                         os.remove(self.html_path)
-
-
                 except Exception:
                     pass
-                self.win.destroy()
+                self.main_window.destroy()
                 sys.exit()
 
-
-        def enforce_restrictions():
+        def enforce_security_restrictions():
             while True:
-
                 try:
                     for proc in psutil.process_iter(['pid', 'name']):
                         pname = proc.info['name'].lower()
@@ -177,7 +168,7 @@ class App:
                 except Exception:
                     pass
 
-                self.kill_other_edge()
+                self.terminate_unauthorized_edge_instances()
 
                 try:
                     for proc in psutil.process_iter(['pid', 'name']):
@@ -187,7 +178,7 @@ class App:
                     pass
 
                 try:
-                    if self.is_browser_alive():
+                    if self.verify_browser_process_active():
                         browser_window = gw.getWindowsWithTitle("edgegi")
                         if browser_window:
                             browser_window = browser_window[0]
@@ -200,70 +191,69 @@ class App:
 
                 time.sleep(1)
 
-        alert = Tk()
-        alert.attributes('-fullscreen', True)
-        alert.configure(bg='black')
+        lock_screen = Tk()
+        lock_screen.attributes('-fullscreen', True)
+        lock_screen.configure(bg='black')
 
-        label = Label(alert, text="Браузер был закрыт!\nВведите пароль, чтобы выйти.",
+        warning_label = Label(lock_screen, text="Браузер был закрыт!\nВведите пароль, чтобы выйти.",
                       font=("Arial", 30), fg="white", bg="black")
-        label.pack(pady=100)
+        warning_label.pack(pady=100)
 
-        entry = Entry(alert, font=("Arial", 30), show="*")
-        entry.pack()
+        password_entry = Entry(lock_screen, font=("Arial", 30), show="*")
+        password_entry.pack()
 
-        button = Button(alert, text="ОК", font=("Arial", 24), command=close_program)
-        button.pack(pady=20)
+        submit_button = Button(lock_screen, text="ОК", font=("Arial", 24), command=close_program)
+        submit_button.pack(pady=20)
 
-        threading.Thread(target=enforce_restrictions, daemon=True).start()
-        alert.mainloop()
+        threading.Thread(target=enforce_security_restrictions, daemon=True).start()
+        lock_screen.mainloop()
 
-    def check_tabs_loop(self):
+    def monitor_browser_tabs(self):
         while True:
             try:
-                if not self.is_browser_alive():
-                    print(self.is_browser_alive())
-                    self.show_fullscreen_alert()
+                if not self.verify_browser_process_active():
+                    print(self.verify_browser_process_active())
+                    self.display_security_lock_screen()
                     continue
-                self.abracadabra()
-                self.driv.switch_to.window(self.driv.window_handles[0])
-                self.current_url()
-                self.check_window_state_loop()
-                self.kill_other_edge()
-                self.terminate_taskmgr()
+                self.close_unauthorized_tabs()
+                self.browser_driver.switch_to.window(self.browser_driver.window_handles[0])
+                self.validate_current_url()
+                self.enforce_browser_window_state()
+                self.terminate_unauthorized_edge_instances()
+                self.prevent_task_manager_usage()
             except Exception:
                 pass
-            if self.crowning:
+            if self.is_running:
                 time.sleep(0.45)
 
-    def abracadabra(self):
-        if self.is_browser_alive() and len(self.driv.window_handles) > 1:
-            for handle in self.driv.window_handles[1:]:
+    def close_unauthorized_tabs(self):
+        if self.verify_browser_process_active() and len(self.browser_driver.window_handles) > 1:
+            for handle in self.browser_driver.window_handles[1:]:
                 try:
-                    self.driv.switch_to.window(handle)
-                    print(self.driv.window_handles[1:])
-                    self.driv.execute_script("window.close();")
-                    self.driv.implicitly_wait(0.05)
+                    self.browser_driver.switch_to.window(handle)
+                    print(self.browser_driver.window_handles[1:])
+                    self.browser_driver.execute_script("window.close();")
+                    self.browser_driver.implicitly_wait(0.05)
                 except Exception:
                     pass
 
-    def current_url(self):
+    def validate_current_url(self):
         try:
-
-            if not self.is_browser_alive():
+            if not self.verify_browser_process_active():
                 return
-            current_url = self.driv.current_url
+            current_url = self.browser_driver.current_url
             if current_url.startswith("file:///") and "links.html" in current_url:
                 return
-            if not any(site in current_url for site in self.allowed_sites):
-                local_page = self.create_links_page()
+            if not any(site in current_url for site in self.whitelisted_domains):
+                local_page = self.generate_allowed_sites_html()
                 print(local_page, "создан")
-                self.driv.get(local_page)
+                self.browser_driver.get(local_page)
                 print("открыт")
         except WebDriverException as e:
             print(e, 1)
-            self.driv = None
+            self.browser_driver = None
 
-    def kill_other_edge(self):
+    def terminate_unauthorized_edge_instances(self):
         for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
             try:
                 if "msedge.exe" in proc.info['name'].lower():
@@ -275,7 +265,7 @@ class App:
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
 
-    def check_window_state_loop(self):
+    def enforce_browser_window_state(self):
         try:
             for proc in psutil.process_iter():
                 try:
@@ -286,9 +276,9 @@ class App:
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
 
-            self.kill_other_edge()
+            self.terminate_unauthorized_edge_instances()
 
-            if self.is_browser_alive():
+            if self.verify_browser_process_active():
                 browser_window = gw.getWindowsWithTitle("edgegi")
                 if browser_window:
                     browser_window = browser_window[0]
@@ -299,7 +289,7 @@ class App:
         except Exception:
             pass
 
-    def terminate_taskmgr(self):
+    def prevent_task_manager_usage(self):
         try:
             for proc in psutil.process_iter(['pid', 'name']):
                 if proc.info['name'].lower() == 'taskmgr.exe':
@@ -307,28 +297,25 @@ class App:
         except Exception:
             pass
 
-
-def request_admin():
-    if not is_admin():
+def require_admin_privileges():
+    if not check_admin_privileges():
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
         sys.exit()
 
-
 def main():
-    request_admin()
+    require_admin_privileges()
 
+    whitelisted_domains = []
+    unlock_password = ""
 
-    allowed_sites = []
-    password = ""
+    domain_label = Label(main_window, text="Введите допустимые ссылки для посещения", font=("arial", 18))
+    domain_label.pack()
+    domain_label.place(x=1440 // 3 + 25, y=100)
+    domain_entry = Entry(main_window, font=("arial", 26))
+    domain_entry.pack()
+    domain_entry.place(x=1440 // 3 + 70, y=260)
 
-    labba = Label(window, text="введите допустимые ссылки для посещения", font=("arial", 18))
-    labba.pack()
-    labba.place(x=1440 // 3 + 25, y=100)
-    entrys = Entry(window, font=("arial", 26))
-    entrys.pack()
-    entrys.place(x=1440 // 3 + 70, y=260)
-
-    def is_trusted_domain(url):
+    def validate_domain_trustworthiness(url):
         trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de'}
         parts = url.strip().split('.')
         if len(parts) < 2 or not parts[-2]:
@@ -336,54 +323,53 @@ def main():
         tld = parts[-1].lower()
         return tld in trusted_tlds
 
-    def add_site():
-        if not entrys.get()=="" and is_trusted_domain(entrys.get()):
-            allowed_sites.append(entrys.get())
-            entrys.delete(0, END)
+    def add_allowed_website():
+        if not domain_entry.get() == "" and validate_domain_trustworthiness(domain_entry.get()):
+            whitelisted_domains.append(domain_entry.get())
+            domain_entry.delete(0, END)
         else:
             ctypes.windll.user32.MessageBoxW(
                 0,
-                "введенная вами строка не похожа сайт",
-                "Упс",
+                "Введенная вами строка не похожа на сайт",
+                "Ошибка",
                 0x0000 | 0x0010 | 0x1000
             )
 
-
-    def second_act():
-        if allowed_sites==[]:
+    def prompt_for_password_setup():
+        if whitelisted_domains == []:
             ctypes.windll.user32.MessageBoxW(
                 0,
-                "вы не ввели ссылки для посещения",
-                "Упс",
+                "Вы не ввели ссылки для посещения",
+                "Ошибка",
                 0x0000 | 0x0010 | 0x1000
             )
         else:
-            btn_confim.destroy()
-            btn_over.config(text="установить пароль", command=add_password, font=("arial", 20))
-            labba.config(text="придумайте надёжный пароль\nдля отключения программы")
-            labba.place(x=1440 // 3 + 90, y=100)
+            confirm_button.destroy()
+            next_button.config(text="Установить пароль", command=set_unlock_password, font=("arial", 20))
+            domain_label.config(text="Придумайте надёжный пароль\nдля отключения программы")
+            domain_label.place(x=1440 // 3 + 90, y=100)
 
-    def add_password():
-        nonlocal password
-        password = entrys.get()
-        if password=="":
+    def set_unlock_password():
+        nonlocal unlock_password
+        unlock_password = domain_entry.get()
+        if unlock_password == "":
             ctypes.windll.user32.MessageBoxW(
                 0,
-                "вы не ввели пароль",
-                "Упс",
+                "Вы не ввели пароль",
+                "Ошибка",
                 0x0000 | 0x0010 | 0x1000
             )
         else:
-            window.destroy()
-            App(allowed_sites, password)
+            main_window.destroy()
+            App(whitelisted_domains, unlock_password)
 
-    btn_confim = Button(window, text="ввести ссылку", font=("arial", 18), command=add_site)
-    btn_confim.pack()
-    btn_confim.place(x=1440 // 2 - 100, y=500)
-    btn_over = Button(window, text="окончить ввод ссылок", font=("arial", 16), command=second_act)
-    btn_over.place(x=1440 // 2 - 100, y=550)
-    window.attributes('-fullscreen', True)
-    window.mainloop()
+    confirm_button = Button(main_window, text="Ввести ссылку", font=("arial", 18), command=add_allowed_website)
+    confirm_button.pack()
+    confirm_button.place(x=1440 // 2 - 100, y=500)
+    next_button = Button(main_window, text="Окончить ввод ссылок", font=("arial", 16), command=prompt_for_password_setup)
+    next_button.place(x=1440 // 2 - 100, y=550)
+    main_window.attributes('-fullscreen', True)
+    main_window.mainloop()
 
 
 main()
