@@ -363,7 +363,7 @@ class App:
             except Exception:
                 pass
             if self.is_running:
-                time.sleep(0.4)
+                time.sleep(0.43)
 
     def close_unauthorized_tabs(self):
         if self.verify_browser_process_active() and len(self.browser_driver.window_handles) > 1:
@@ -372,7 +372,7 @@ class App:
                     self.browser_driver.switch_to.window(handle)
 
                     self.browser_driver.execute_script("window.close();")
-                    self.browser_driver.implicitly_wait(0.05)
+
                 except Exception:
                     pass
 
