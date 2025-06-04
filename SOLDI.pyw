@@ -466,7 +466,8 @@ def main():
 
     def add_allowed_website():
         if not domain_entry.get() == "" and validate_domain_trustworthiness(domain_entry.get()):
-            whitelisted_domains.append(domain_entry.get())
+            if domain_entry.get() not in whitelisted_domains:
+                whitelisted_domains.append(domain_entry.get())
             domain_entry.delete(0, END)
         else:
             ctypes.windll.user32.MessageBoxW(
@@ -488,6 +489,7 @@ def main():
             confirm_button.destroy()
             next_button.config(text="Установить пароль", command=set_unlock_password, font=("arial", 20))
             domain_label.config(text="Придумайте надёжный пароль\nдля отключения программы")
+            next_button.place(x=1440 // 2 - 110, y=320)
             domain_label.place(x=1440 // 3 + 90, y=100)
 
     def set_unlock_password():
@@ -504,12 +506,14 @@ def main():
             main_window.destroy()
             App(whitelisted_domains, unlock_password)
 
-    confirm_button = Button(main_window, text="Ввести ссылку", font=("arial", 18), command=add_allowed_website)
+    confirm_button = Button(main_window, text="Ввести ссылку ", font=("arial", 23), command=add_allowed_website)
     confirm_button.pack()
-    confirm_button.place(x=1440 // 2 - 100, y=500)
-    next_button = Button(main_window, text="Окончить ввод ссылок", font=("arial", 16),
+    confirm_button.place(x=1440 // 2 - 100, y=485)
+    next_button = Button(main_window, text="Окончить ввод ссылок ", font=("arial", 16),
                          command=prompt_for_password_setup)
     next_button.place(x=1440 // 2 - 100, y=550)
+    exit_button = Button(main_window, text="закрыть приложение", font=("arial", 17), command=lambda: sys.exit())
+    exit_button.place(x=1440 // 2 - 100, y=650)
     main_window.attributes('-fullscreen', True)
     main_window.mainloop()
 
