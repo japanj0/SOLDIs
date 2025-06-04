@@ -81,25 +81,161 @@ class App:
         return False
 
     def generate_allowed_sites_html(self):
-        with open(self.html_path, "w", encoding="utf-8") as f:
-            f.write("""
-<html><head><title>Каталог сайтов</title>
-<script>
-    window.open = function() {
-        alert("Открытие новых окон запрещено.");
-        return null;
-    };
-</script>
-</head>
-<body style='font-size:24px;'>
-<h1>Разрешённые сайты</h1><ul>
-""")
-            for site in self.whitelisted_domains:
-                f.write(f'<li><a href="https://{site}" target="_self">{site}</a></li>')
-            f.write("</ul></body></html>")
-        print("HTML-файл создан")
-        return "file:///" + self.html_path.replace("\\", "/")
+            with open(self.html_path, "w", encoding="utf-8") as f:
+                f.write("""
+    <!DOCTYPE html>
+    <html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Каталог разрешённых сайтов</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
 
+            body {
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                min-height: 100vh;
+                padding: 40px 20px;
+                color: #333;
+            }
+
+            .container {
+                max-width: 1000px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+                padding: 40px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .container::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 10px;
+                background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
+            }
+
+            h1 {
+                text-align: center;
+                margin-bottom: 30px;
+                color: #2c3e50;
+                font-size: 2.5rem;
+                position: relative;
+                padding-bottom: 15px;
+            }
+
+            h1::after {
+                content: "";
+                position: absolute;
+                bottom: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 100px;
+                height: 3px;
+                background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
+                border-radius: 3px;
+            }
+
+            .description {
+                text-align: center;
+                margin-bottom: 40px;
+                font-size: 1.1rem;
+                color: #555;
+                line-height: 1.6;
+            }
+
+            .site-list {
+                list-style: none;
+                margin-bottom: 40px;
+            }
+
+            .site-item {
+                margin-bottom: 15px;
+                transition: all 0.3s ease;
+            }
+
+            .site-item:hover {
+                transform: translateX(10px);
+            }
+
+            .site-link {
+                display: block;
+                padding: 15px 20px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                text-decoration: none;
+                color: #2c3e50;
+                font-size: 1.2rem;
+                transition: all 0.3s ease;
+                border-left: 4px solid transparent;
+            }
+
+            .site-link:hover {
+                background: #e9ecef;
+                border-left: 4px solid #4b6cb7;
+                color: #4b6cb7;
+            }
+
+            .footer {
+                text-align: center;
+                margin-top: 40px;
+                color: #777;
+                font-size: 0.9rem;
+            }
+
+            @media (max-width: 768px) {
+                .container {
+                    padding: 30px 20px;
+                }
+
+                h1 {
+                    font-size: 2rem;
+                }
+
+                .site-link {
+                    font-size: 1rem;
+                    padding: 12px 15px;
+                }
+            }
+        </style>
+        <script>
+            window.open = function() {
+                alert("Открытие новых окон запрещено.");
+                return null;
+            };
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Разрешённые сайты</h1>
+            <p class="description">Вы можете посещать только эти веб-сайты. Нажмите на ссылку, чтобы перейти.</p>
+
+            <ul class="site-list">
+    """)
+                for site in self.whitelisted_domains:
+                    f.write(
+                        f'            <li class="site-item"><a href="https://{site}" target="_self" class="site-link">{site}</a></li>\n')
+                f.write("""        </ul>
+
+            <div class="footer">
+                <p>Для выхода из программы закройте браузер и введите пароль администратора</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+            print("HTML-файл создан")
+            return "file:///" + self.html_path.replace("\\", "/")
     def launch_controlled_browser(self):
         if self.browser_driver is not None:
             try:
