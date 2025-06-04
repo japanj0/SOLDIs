@@ -53,6 +53,7 @@ class App:
         self.launch_controlled_browser()
 
         self.main_window = Tk()
+        self.main_window.resizable(False, False)
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
         threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
