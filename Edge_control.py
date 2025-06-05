@@ -13,14 +13,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
 import sys
 
-main_window = Tk()
 
 
-def check_admin_privileges():
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except Exception:
-        return False
+
+
 
 
 class App:
@@ -437,15 +433,11 @@ class App:
             pass
 
 
-def require_admin_privileges():
-    if not check_admin_privileges():
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
-        sys.exit()
+
 
 
 def main():
-    require_admin_privileges()
-
+    main_window = Tk()
     whitelisted_domains = []
     unlock_password = ""
 
@@ -516,6 +508,3 @@ def main():
     exit_button.place(x=1440 // 2 - 100, y=650)
     main_window.attributes('-fullscreen', True)
     main_window.mainloop()
-
-
-main()
