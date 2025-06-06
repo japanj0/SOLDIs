@@ -269,7 +269,6 @@ class App:
 
             self.browser_state = 2
         except Exception as e:
-            print(e)
             self.browser_driver = None
 
     def verify_browser_process_active(self):
@@ -329,7 +328,7 @@ class App:
                             if not browser_window.isMaximized:
                                 browser_window.maximize()
                 except Exception as e:
-                    print(e)
+                    pass
 
                 time.sleep(1)
 
@@ -364,7 +363,7 @@ class App:
                 self.terminate_unauthorized_firefox_instances()
                 self.prevent_task_manager_usage()
             except Exception as e:
-                print(e)
+                pass
             if self.is_running:
                 time.sleep(0.43)
 
@@ -425,7 +424,7 @@ class App:
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
         except Exception as e:
-            print(f"Error in terminate_unauthorized_firefox_instances: {e}")
+            pass
 
 
     def enforce_browser_window_state(self):
@@ -450,7 +449,7 @@ class App:
                     if not browser_window.isMaximized:
                         browser_window.maximize()
         except Exception as e:
-            print(e)
+            pass
 
     def prevent_task_manager_usage(self):
         try:
