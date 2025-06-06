@@ -4,7 +4,7 @@ import time
 import os
 import uuid
 from tkinter import *
-from selenium.webdriver.edge.options import Options
+from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import WebDriverException
 import psutil
 import pygetwindow as gw
@@ -12,12 +12,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
 import sys
-
-
-
-
-
-
 
 class App:
     def __init__(self, whitelisted_domains, unlock_password):
@@ -50,6 +44,7 @@ class App:
 
         self.main_window = Tk()
         self.main_window.resizable(False, False)
+        self.main_window.iconify()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
         threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
@@ -59,7 +54,7 @@ class App:
         self.main_window.mainloop()
 
     def create_browser_lock_mutex(self):
-        mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\EdgeBrowserLock")
+        mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\FirefoxBrowserLock")
         if not mutex:
             return None
         return mutex
@@ -73,7 +68,7 @@ class App:
             self.browser_lock_mutex = None
 
     def check_browser_process_running(self):
-        mutex = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, "Global\\EdgeBrowserLock")
+        mutex = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, "Global\\FirefoxBrowserLock")
         if mutex:
             ctypes.windll.kernel32.CloseHandle(mutex)
             return True
@@ -245,28 +240,33 @@ class App:
             self.browser_driver = None
 
         options = Options()
-        self.user_data_dir = f"C:\\Temp\\EdgePythonProfile_{uuid.uuid4()}"
+        self.user_data_dir = f"C:\\Temp\\FirefoxPythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
-        options.add_argument("--remote-debugging-port=9222")
-        options.add_argument("--no-sandbox")
+
+
+
+        options.set_preference("remote-debugging-port", 9222)
         options.add_argument(f"--user-data-dir={self.user_data_dir}")
         options.add_argument("--start-maximized")
-        options.add_argument("--disable-features=msImplicitSignIn")
-        options.add_argument("--disable-sync")
+        options.add_argument("--no-remote")
+        options.add_argument("--new-instance")
         options.add_argument("--ignore-certificate-errors")
-        options.add_argument("--app-name=cara")
+        options.set_preference("app.update.auto", False)
+        options.set_preference("app.update.enabled", False)
+
 
         try:
-            self.browser_driver = webdriver.Edge(options=options)
+            self.browser_driver = webdriver.Firefox(options=options)
+            self.browser_driver.implicitly_wait(3)
             WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
             self.browser_driver.get(self.local_page_url)
             self.browser_driver.implicitly_wait(1)
             self.browser_driver.maximize_window()
-            self.browser_driver.execute_script("document.title = 'edgegi';")
+            self.browser_driver.execute_script("document.title = 'firefoxgi';")
 
             self.browser_state = 2
         except Exception as e:
-
+            print(e)
             self.browser_driver = None
 
     def verify_browser_process_active(self):
@@ -294,7 +294,7 @@ class App:
                 try:
                     for proc in psutil.process_iter(['pid', 'name']):
                         pname = proc.info['name'].lower()
-                        if pname in ["firefox.exe", "chrome.exe", "opera.exe", "roblox.exe",
+                        if pname in ["msedge.exe", "chrome.exe", "opera.exe", "roblox.exe",
                                      "minecraft.exe", "taskmgr.exe", "yandex.exe", "tlauncher.exe",
                                      "browser.exe", "rulauncher.exe", "java.exe"]:
                             try:
@@ -304,7 +304,7 @@ class App:
                 except Exception:
                     pass
 
-                self.terminate_unauthorized_edge_instances()
+                self.terminate_unauthorized_firefox_instances()
 
                 try:
                     for proc in psutil.process_iter(['pid', 'name']):
@@ -315,15 +315,15 @@ class App:
 
                 try:
                     if self.verify_browser_process_active():
-                        browser_window = gw.getWindowsWithTitle("edgegi")
+                        browser_window = gw.getWindowsWithTitle("firefoxgi")
                         if browser_window:
                             browser_window = browser_window[0]
                             if browser_window.isMinimized:
                                 browser_window.restore()
                             if not browser_window.isMaximized:
                                 browser_window.maximize()
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(e)
 
                 time.sleep(1)
 
@@ -354,10 +354,10 @@ class App:
                 self.browser_driver.switch_to.window(self.browser_driver.window_handles[0])
                 self.validate_current_url()
                 self.enforce_browser_window_state()
-                self.terminate_unauthorized_edge_instances()
+                self.terminate_unauthorized_firefox_instances()
                 self.prevent_task_manager_usage()
-            except Exception:
-                pass
+            except Exception as e:
+                print(e)
             if self.is_running:
                 time.sleep(0.43)
 
@@ -366,9 +366,7 @@ class App:
             for handle in self.browser_driver.window_handles[1:]:
                 try:
                     self.browser_driver.switch_to.window(handle)
-
                     self.browser_driver.execute_script("window.close();")
-
                 except Exception:
                     pass
 
@@ -381,48 +379,56 @@ class App:
                 return
             if not any(site in current_url for site in self.whitelisted_domains):
                 local_page = self.generate_allowed_sites_html()
-
                 self.browser_driver.get(local_page)
-
         except WebDriverException as e:
-
             self.browser_driver = None
+            print(e)
 
-    def terminate_unauthorized_edge_instances(self):
-        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-            try:
-                if "msedge.exe" in proc.info['name'].lower():
-                    cmdline = proc.info['cmdline']
-                    if cmdline and any("--user-data-dir=C:\\Temp\\EdgePythonProfile" in arg for arg in cmdline):
-                        pass
-                    else:
+    def terminate_unauthorized_firefox_instances(self):
+        try:
+            controlled_pids = set()
+            if self.browser_driver:
+                firefox_pid = self.browser_driver.service.process.pid
+                controlled_pids.add(firefox_pid)
+                try:
+                    parent = psutil.Process(firefox_pid)
+                    for child in parent.children(recursive=True):
+                        controlled_pids.add(child.pid)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            for proc in psutil.process_iter(['pid', 'name']):
+                try:
+                    if proc.info['name'].lower() == 'firefox.exe' and proc.info['pid'] not in controlled_pids:
                         proc.terminate()
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                continue
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    continue
+        except Exception as e:
+            print(f"Error in terminate_unauthorized_firefox_instances: {e}")
+
 
     def enforce_browser_window_state(self):
         try:
             for proc in psutil.process_iter():
                 try:
-                    if proc.name().lower() in ["firefox.exe", "chrome.exe", "opera.exe", "roblox.exe",
+                    if proc.name().lower() in ["msedge.exe", "chrome.exe", "opera.exe", "roblox.exe",
                                                "minecraft.exe", "taskmgr.exe", "yandex.exe", "tlauncher.exe",
                                                "browser.exe", "rulauncher.exe", "java.exe"]:
                         proc.terminate()
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
 
-            self.terminate_unauthorized_edge_instances()
+            self.terminate_unauthorized_firefox_instances()
 
             if self.verify_browser_process_active():
-                browser_window = gw.getWindowsWithTitle("edgegi")
+                browser_window = gw.getWindowsWithTitle("firefoxgi")
                 if browser_window:
                     browser_window = browser_window[0]
                     if browser_window.isMinimized:
                         browser_window.restore()
                     if not browser_window.isMaximized:
                         browser_window.maximize()
-        except Exception:
-            pass
+        except Exception as e:
+            print(e)
 
     def prevent_task_manager_usage(self):
         try:
@@ -431,10 +437,6 @@ class App:
                     proc.kill()
         except Exception:
             pass
-
-
-
-
 
 def main():
     main_window = Tk()
