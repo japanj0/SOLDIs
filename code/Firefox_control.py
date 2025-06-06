@@ -287,6 +287,7 @@ class App:
                 except Exception:
                     pass
                 self.main_window.destroy()
+                os.system("taskkill /f /im geckodriver.exe")
                 sys.exit()
 
         def enforce_security_restrictions():
