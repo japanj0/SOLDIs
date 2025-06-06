@@ -151,9 +151,9 @@ except Exception as e:
     fox_im = ImageTk.PhotoImage(Image.new('RGB', (100, 100), 'white'))
     chrome_im = ImageTk.PhotoImage(Image.new('RGB', (100, 100), 'white'))
 
-label_f_u = Label(win, text="выберите браузер который вам удобен", font=("arial", 24), background="white")
+label_f_u = Label(win, text="выберите браузер который вам удобен", font=("arial", 34), background="white")
 label_f_u.pack()
-label_f_u.place(x=1440 // 2 - 250, y=100)
+label_f_u.place(x=1440 // 2 - 350, y=100)
 
 button_edge = Button(win, text="Edge", image=ed_im, compound='left', background="white", font=("arial", 24),
                      command=Edge, relief=RAISED)
@@ -169,5 +169,10 @@ button_firefox = Button(win, text="Firefox", compound='left', background="white"
                         command=Firefox, relief=RAISED)
 button_firefox.pack()
 button_firefox.place(x=1440 // 2 - 500, y=400)
+
+exit_button = Button(win, text="покинуть приложение", background="white", font=("arial", 29),
+                     command=lambda: sys.exit())
+exit_button.pack()
+exit_button.place(x=1440 // 2 - 200, y=650)
 
 win.mainloop()

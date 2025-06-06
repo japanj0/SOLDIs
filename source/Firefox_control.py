@@ -4,6 +4,8 @@ import time
 import os
 import uuid
 from tkinter import *
+from urllib.parse import urlparse
+import idna
 from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import WebDriverException
 import psutil
@@ -281,15 +283,17 @@ class App:
 
     def display_security_lock_screen(self):
         def close_program():
+            self.is_running=False
+            RAMWORKER.clearing_RAM()
             if password_entry.get() == self.unlock_password:
+                lock_screen.destroy()
                 try:
                     if os.path.exists(self.html_path):
                         os.remove(self.html_path)
                 except Exception:
                     pass
                 self.main_window.destroy()
-                RAMWORKER.clearing_RAM()
-                sys.exit()
+                raise SystemExit(0)
 
         def enforce_security_restrictions():
             while True:
@@ -347,9 +351,10 @@ class App:
         lock_screen.mainloop()
 
     def monitor_browser_tabs(self):
-        while True:
+        while self.is_running:
             try:
                 if not self.verify_browser_process_active():
+
                     self.display_security_lock_screen()
                     continue
                 self.close_unauthorized_tabs()
@@ -376,15 +381,30 @@ class App:
         try:
             if not self.verify_browser_process_active():
                 return
+
             current_url = self.browser_driver.current_url
             if current_url.startswith("file:///") and "links.html" in current_url:
                 return
-            if not any(site in current_url for site in self.whitelisted_domains):
+
+            parsed_url = urlparse(current_url)
+            domain = parsed_url.netloc.split(':')[0]
+
+            normalized_domain = domain[4:] if domain.startswith('www.') else domain
+
+            domain_allowed = any(
+                allowed_domain == normalized_domain or
+                allowed_domain == domain or
+                f"www.{allowed_domain}" == domain or
+                idna.encode(allowed_domain).decode('ascii') == normalized_domain
+                for allowed_domain in self.whitelisted_domains
+            )
+
+            if not domain_allowed:
                 local_page = self.generate_allowed_sites_html()
                 self.browser_driver.get(local_page)
+
         except WebDriverException as e:
             self.browser_driver = None
-            print(e)
 
     def terminate_unauthorized_firefox_instances(self):
         try:
@@ -453,7 +473,7 @@ def main():
     domain_entry.place(x=1440 // 3 + 70, y=260)
 
     def validate_domain_trustworthiness(url):
-        trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de'}
+        trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de','рф'}
         parts = url.strip().split('.')
         if len(parts) < 2 or not parts[-2]:
             return False
@@ -461,9 +481,20 @@ def main():
         return tld in trusted_tlds
 
     def add_allowed_website():
-        if not domain_entry.get() == "" and validate_domain_trustworthiness(domain_entry.get()):
-            if domain_entry.get() not in whitelisted_domains:
-                whitelisted_domains.append(domain_entry.get())
+        domain = domain_entry.get().strip()
+        if not domain:
+            return
+
+        if domain.startswith(('http://', 'https://')):
+            domain = domain.split('://')[1]
+
+        domain = domain.split('/')[0]
+
+        normalized_domain = domain[4:] if domain.startswith('www.') else domain
+
+        if validate_domain_trustworthiness(normalized_domain):
+            if normalized_domain not in whitelisted_domains:
+                whitelisted_domains.append(normalized_domain)
             domain_entry.delete(0, END)
         else:
             ctypes.windll.user32.MessageBoxW(
