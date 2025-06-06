@@ -8,6 +8,7 @@ from selenium.webdriver.edge.service import Service as Edgeservice
 from selenium.webdriver.edge.options import Options as Edgeoptions
 import ctypes
 import Edge_control
+import Firefox_control
 def require_admin():
     try:
         if ctypes.windll.shell32.IsUserAnAdmin():
@@ -49,6 +50,9 @@ def Firefox():
         options.add_argument('--no-sandbox')
         browser_driver = webdriver.Firefox(options=options, service=service)
         browser_driver.quit()
+        win.destroy()
+        Firefox_control.main()
+
     except Exception as e:
         print(e)
         win.focus_force()
