@@ -538,7 +538,7 @@ def main():
     next_button = Button(main_window, text="Окончить ввод ссылок ", font=("arial", 16),
                          command=prompt_for_password_setup)
     next_button.place(x=1440 // 2 - 100, y=550)
-    exit_button = Button(main_window, text="закрыть приложение", font=("arial", 17), command=lambda: sys.exit())
+    exit_button = Button(main_window, text="закрыть приложение", font=("arial", 17), command=lambda: main_window.destroy())
     exit_button.place(x=1440 // 2 - 100, y=650)
     main_window.attributes('-fullscreen', True)
     main_window.mainloop()
