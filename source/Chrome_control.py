@@ -268,6 +268,7 @@ class App:
 
             self.browser_state = 2
         except Exception as e:
+            print(e)
             self.browser_driver = None
 
     def verify_browser_process_active(self):
@@ -327,11 +328,12 @@ class App:
                             if not browser_window.isMaximized:
                                 browser_window.maximize()
                 except Exception as e:
-                    pass
+                    print(e)
 
                 time.sleep(1)
 
         lock_screen = Tk()
+        lock_screen.protocol("WM_DELETE_WINDOW", self.handle_window_close)
         lock_screen.attributes('-fullscreen', True)
         lock_screen.configure(bg='black')
 
@@ -362,7 +364,7 @@ class App:
                 self.terminate_unauthorized_chrome_instances()
                 self.prevent_task_manager_usage()
             except Exception as e:
-                pass
+                print(e)
             if self.is_running:
                 time.sleep(0.43)
 
@@ -423,7 +425,7 @@ class App:
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
         except Exception as e:
-            pass
+            print(f"Error in terminate_unauthorized_chrome_instances: {e}")
 
     def enforce_browser_window_state(self):
         try:
@@ -447,7 +449,7 @@ class App:
                     if not browser_window.isMaximized:
                         browser_window.maximize()
         except Exception as e:
-            pass
+            print(e)
 
     def prevent_task_manager_usage(self):
         try:

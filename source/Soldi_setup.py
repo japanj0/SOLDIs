@@ -1,5 +1,6 @@
 import sys
 import os
+import uuid
 from tkinter import *
 from PIL import Image, ImageTk
 import tempfile
@@ -12,10 +13,13 @@ from selenium.webdriver.edge.service import Service as Edgeservice
 from selenium.webdriver.edge.options import Options as Edgeoptions
 from selenium.webdriver.chrome.service import Service as Chromeservice
 from selenium.webdriver.chrome.options import Options as Chromeoptions
+from selenium.common.exceptions import  NoSuchDriverException
 import Edge_control
 import Firefox_control
 import Chrome_control
-
+import shutil
+def is_browser_installed(browser_name):
+    return shutil.which(browser_name) is not None
 
 def require_admin():
     try:
@@ -78,18 +82,36 @@ def Edge():
     try:
         options = Edgeoptions()
         service = Edgeservice(timeout=3)
+        user_data_dir = f"C:\\Temp\\EdgePythonProfile_{uuid.uuid4()}"
+        os.makedirs(user_data_dir, exist_ok=True)
+        options.add_argument("--remote-debugging-port=9222")
+        options.add_argument(f"--user-data-dir={user_data_dir}")
+        options.add_argument("--start-maximized")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-remote")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--ignore-certificate-errors")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--disable-notifications")
+        options.add_argument("--disable-sync")
         options.add_argument('--headless')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--no-sandbox')
+        options.add_argument("--disable-cloud-import")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_argument("--app-name=cara")
         browser_driver = webdriver.Edge(options=options, service=service)
         browser_driver.quit()
         win.destroy()
         Edge_control.main()
-    except Exception as e:
+    except NoSuchDriverException as e:
+        ctypes.windll.user32.MessageBoxW(0,
+                                         f"{e} произошла ошибка, возможно данный браузер не установлен на вашем пк, либо проверьте подключение к сети",
+                                         "Ошибка",
+                                         0x0000 | 0x0010 | 0x1000)
         print(e)
         win.focus_force()
-        ctypes.windll.user32.MessageBoxW(0, "Данный браузер не установлен на вашем компьютере", "Ошибка",
-                                         0x0000 | 0x0010 | 0x1000)
+
 
 
 def Firefox():
@@ -97,6 +119,8 @@ def Firefox():
         options = FireOptions()
         service = FirefoxService(timeout=3)
         options.add_argument('--headless')
+        user_data_dir = f"C:\\Temp\\FirefoxPythonProfile_{uuid.uuid4()}"
+        options.add_argument(f"--user-data-dir={user_data_dir}")
         options.add_argument('--disable-gpu')
         options.add_argument('--no-sandbox')
         browser_driver = webdriver.Firefox(options=options, service=service)
@@ -106,7 +130,7 @@ def Firefox():
     except Exception as e:
         print(e)
         win.focus_force()
-        ctypes.windll.user32.MessageBoxW(0, "Данный браузер не установлен на вашем компьютере", "Ошибка",
+        ctypes.windll.user32.MessageBoxW(0, f"произошла ошибка, возможно данный браузер не установлен на вашем пк, либо проверьте подключение к сети", "Ошибка",
                                          0x0000 | 0x0010 | 0x1000)
 
 
@@ -116,6 +140,8 @@ def Chrome():
         service = Chromeservice(timeout=3)
         options.add_argument('--headless')
         options.add_argument('--disable-gpu')
+        user_data_dir = f"C:\\Temp\\ChromePythonProfile_{uuid.uuid4()}"
+        options.add_argument(f"--user-data-dir={user_data_dir}")
         options.add_argument('--no-sandbox')
         browser_driver = webdriver.Chrome(options=options, service=service)
         browser_driver.quit()
@@ -124,7 +150,7 @@ def Chrome():
     except Exception as e:
         print(e)
         win.focus_force()
-        ctypes.windll.user32.MessageBoxW(0, "Данный браузер не установлен на вашем компьютере", "Ошибка",
+        ctypes.windll.user32.MessageBoxW(0, f"произошла ошибка, возможно данный браузер не установлен на вашем пк, либо проверьте подключение к сети", "Ошибка",
                                          0x0000 | 0x0010 | 0x1000)
 
 
@@ -171,7 +197,7 @@ button_firefox.pack()
 button_firefox.place(x=1440 // 2 - 500, y=400)
 
 exit_button = Button(win, text="покинуть приложение", background="white", font=("arial", 29),
-                     command=lambda: sys.exit())
+                     command=lambda:win.destroy())
 exit_button.pack()
 exit_button.place(x=1440 // 2 - 200, y=650)
 

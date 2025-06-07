@@ -248,15 +248,18 @@ class App:
         options.add_argument("--remote-debugging-port=9222")
         options.add_argument(f"--user-data-dir={self.user_data_dir}")
         options.add_argument("--start-maximized")
+        options.add_argument("--no-first-run")
         options.add_argument("--no-remote")
-        options.add_argument("--new-window")
-        options.add_argument("--ignore-certificate-errors")
         options.add_argument("--disable-extensions")
-        options.add_argument("--disable-popup-blocking")
-        options.add_argument("--disable-default-apps")
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_argument("--ignore-certificate-errors")
         options.add_argument("--disable-infobars")
         options.add_argument("--disable-notifications")
-        options.add_argument("--remote-allow-origins=*")
+        options.add_argument("--disable-sync")
+        options.add_argument("--disable-cloud-import")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+        options.add_argument("--app-name=cara")
 
         try:
             self.browser_driver = webdriver.Edge(options=options)
@@ -333,6 +336,7 @@ class App:
                 time.sleep(1)
 
         lock_screen = Tk()
+        lock_screen.protocol("WM_DELETE_WINDOW", self.handle_window_close)
         lock_screen.attributes('-fullscreen', True)
         lock_screen.configure(bg='black')
 
@@ -538,4 +542,3 @@ def main():
     exit_button.place(x=1440 // 2 - 100, y=650)
     main_window.attributes('-fullscreen', True)
     main_window.mainloop()
-main()
