@@ -296,7 +296,7 @@ class App:
                             browser_window.maximize()
             except Exception as e:
                 print(f"Security restriction error: {e}")
-            time.sleep(1)
+            time.sleep(0.5)
 
     def terminate_unauthorized_apps(self):
 

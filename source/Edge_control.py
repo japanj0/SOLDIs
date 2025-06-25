@@ -332,7 +332,7 @@ class App:
                 except Exception:
                     pass
 
-                time.sleep(1)
+                time.sleep(0.5)
 
         lock_screen = Tk()
         lock_screen.protocol("WM_DELETE_WINDOW", self.handle_window_close)
