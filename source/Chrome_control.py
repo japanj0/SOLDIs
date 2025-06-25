@@ -15,6 +15,8 @@ import sys
 import RAMWORKER
 from urllib.parse import urlparse
 import idna
+
+
 class App:
     def __init__(self, whitelisted_domains, unlock_password):
         self.whitelisted_domains = whitelisted_domains
@@ -282,7 +284,7 @@ class App:
 
     def display_security_lock_screen(self):
         def close_program():
-            self.is_running=False
+            self.is_running = False
             RAMWORKER.clearing_RAM()
             if password_entry.get() == self.unlock_password:
                 lock_screen.destroy()
@@ -335,17 +337,47 @@ class App:
         lock_screen = Tk()
         lock_screen.protocol("WM_DELETE_WINDOW", self.handle_window_close)
         lock_screen.attributes('-fullscreen', True)
-        lock_screen.configure(bg='black')
+        lock_screen.configure(bg='#1a1a1a')
 
-        warning_label = Label(lock_screen, text="Браузер был закрыт!\nВведите пароль, чтобы выйти.",
-                              font=("Arial", 30), fg="white", bg="black")
-        warning_label.pack(pady=100)
+        content_frame = Frame(lock_screen, bg='#2d2d2d', bd=0, highlightthickness=0,
+                              relief='flat', padx=40, pady=40)
+        content_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
 
-        password_entry = Entry(lock_screen, font=("Arial", 30), show="*")
-        password_entry.pack()
+        warning_label = Label(content_frame,
+                              text="Браузер был закрыт!\nВведите пароль, чтобы выйти.",
+                              font=("Arial", 24, 'bold'),
+                              fg="#ffffff",
+                              bg="#2d2d2d",
+                              justify=CENTER)
+        warning_label.pack(pady=(0, 30))
 
-        submit_button = Button(lock_screen, text="ОК", font=("Arial", 24), command=close_program)
-        submit_button.pack(pady=20)
+        password_entry = Entry(content_frame,
+                               font=("Arial", 20),
+                               show="*",
+                               bd=2,
+                               relief=FLAT,
+                               bg="#3d3d3d",
+                               fg="white",
+                               insertbackground="white",
+                               width=25)
+        password_entry.pack(ipady=10, pady=(0, 20))
+
+        submit_button = Button(content_frame,
+                               text="ПОДТВЕРДИТЬ",
+                               font=("Arial", 16, 'bold'),
+                               command=close_program,
+                               bg="#4b6cb7",
+                               fg="white",
+                               activebackground="#3a5a99",
+                               activeforeground="white",
+                               bd=0,
+                               relief=FLAT,
+                               padx=30,
+                               pady=10)
+        submit_button.pack()
+
+        separator = Frame(content_frame, height=2, bg="#4b6cb7", bd=0)
+        separator.pack(fill=X, pady=20)
 
         threading.Thread(target=enforce_security_restrictions, daemon=True).start()
         lock_screen.mainloop()
@@ -354,7 +386,6 @@ class App:
         while self.is_running:
             try:
                 if not self.verify_browser_process_active():
-
                     self.display_security_lock_screen()
                     continue
                 self.close_unauthorized_tabs()
@@ -459,17 +490,45 @@ class App:
         except Exception:
             pass
 
+
 def main():
     main_window = Tk()
     whitelisted_domains = []
     unlock_password = ""
 
-    domain_label = Label(main_window, text="Введите допустимые ссылки для посещения", font=("arial", 18))
+    main_window.configure(bg='#f0f2f5')
+
+    container = Frame(main_window, bg='#ffffff', padx=40, pady=40, bd=0,
+                      highlightthickness=0, relief='flat')
+    container.place(relx=0.5, rely=0.5, anchor=CENTER)
+
+    header_frame = Frame(container, bg='#ffffff', bd=0)
+    header_frame.pack(pady=(0, 30))
+
+    domain_label = Label(header_frame,
+                         text="Введите допустимые ссылки для посещения",
+                         font=("Arial", 18, 'bold'),
+                         fg="#2c3e50",
+                         bg="#ffffff")
     domain_label.pack()
-    domain_label.place(x=1440 // 3 + 25, y=100)
-    domain_entry = Entry(main_window, font=("arial", 26))
-    domain_entry.pack()
-    domain_entry.place(x=1440 // 3 + 70, y=260)
+
+    input_frame = Frame(container, bg='#ffffff', bd=0)
+    input_frame.pack(pady=(0, 30))
+
+    domain_entry = Entry(input_frame,
+                         font=("Arial", 18),
+                         bd=2,
+                         relief=FLAT,
+                         bg="#E0FFFF",
+                         fg="#333333",
+                         insertbackground="#4b6cb7",
+                         width=40,
+                         highlightthickness=2,
+                         highlightbackground="black")
+    domain_entry.pack(ipady=8, padx=10)
+
+    buttons_frame = Frame(container, bg='#ffffff', bd=0)
+    buttons_frame.pack()
 
     def validate_domain_trustworthiness(url):
         trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф'}
@@ -494,17 +553,25 @@ def main():
         if validate_domain_trustworthiness(normalized_domain):
             if normalized_domain not in whitelisted_domains:
                 whitelisted_domains.append(normalized_domain)
-            domain_entry.delete(0, END)
+                domain_entry.delete(0, END)
+                success_label = Label(input_frame,
+                                      text=f"Добавлен: {normalized_domain}",
+                                      fg="#4CAF50",
+                                      bg="#ffffff",
+                                      font=("Arial", 12))
+                success_label.pack()
+                main_window.after(1000, success_label.destroy)
         else:
-            ctypes.windll.user32.MessageBoxW(
-                0,
-                "Введенная вами строка не похожа на сайт",
-                "Ошибка",
-                0x0000 | 0x0010 | 0x1000
-            )
+            bad_label = Label(input_frame,
+                                  text=f"ОШИБКА! ВВЕДЕННАЯ ВАМИ СТРОКА - НЕ САЙТ!",
+                                  fg="red",
+                                  bg="#ffffff",
+                                  font=("Arial", 12))
+            bad_label.pack()
+            main_window.after(2000, bad_label.destroy)
 
     def prompt_for_password_setup():
-        if whitelisted_domains == []:
+        if not whitelisted_domains:
             ctypes.windll.user32.MessageBoxW(
                 0,
                 "Вы не ввели ссылки для посещения",
@@ -513,15 +580,21 @@ def main():
             )
         else:
             confirm_button.destroy()
-            next_button.config(text="Установить пароль", command=set_unlock_password, font=("arial", 20))
+            next_button.config(text="УСТАНОВИТЬ ПАРОЛЬ",
+                               command=set_unlock_password,
+                               font=("Arial", 14, 'bold'),
+                               bg="#4b6cb7",
+                               fg="white",
+                               activebackground="#3a5a99",
+                               activeforeground="white")
             domain_label.config(text="Придумайте надёжный пароль\nдля отключения программы")
-            next_button.place(x=1440 // 2 - 110, y=320)
-            domain_label.place(x=1440 // 3 + 90, y=100)
+            next_button.pack(pady=(20, 10))
+            domain_label.config(font=("Arial", 16, 'bold'))
 
     def set_unlock_password():
         nonlocal unlock_password
         unlock_password = domain_entry.get()
-        if unlock_password == "":
+        if not unlock_password:
             ctypes.windll.user32.MessageBoxW(
                 0,
                 "Вы не ввели пароль",
@@ -532,14 +605,57 @@ def main():
             main_window.destroy()
             App(whitelisted_domains, unlock_password)
 
-    confirm_button = Button(main_window, text="Ввести ссылку ", font=("arial", 23), command=add_allowed_website)
-    confirm_button.pack()
-    confirm_button.place(x=1440 // 2 - 100, y=485)
-    next_button = Button(main_window, text="Окончить ввод ссылок ", font=("arial", 16),
-                         command=prompt_for_password_setup)
-    next_button.place(x=1440 // 2 - 100, y=550)
-    exit_button = Button(main_window, text="закрыть приложение", font=("arial", 17), command=lambda: main_window.destroy())
-    exit_button.place(x=1440 // 2 - 100, y=650)
+    confirm_button = Button(buttons_frame,
+                            text="ДОБАВИТЬ ССЫЛКУ",
+                            font=("Arial", 14, 'bold'),
+                            command=add_allowed_website,
+                            bg="#4CAF50",
+                            fg="white",
+                            activebackground="#3e8e41",
+                            activeforeground="white",
+                            bd=0,
+                            relief=FLAT,
+                            padx=20,
+                            pady=10)
+    confirm_button.pack(pady=(0, 15), fill=X)
+
+    next_button = Button(buttons_frame,
+                         text="ЗАВЕРШИТЬ ВВОД",
+                         font=("Arial", 14, 'bold'),
+                         command=prompt_for_password_setup,
+                         bg="#FF9800",
+                         fg="white",
+                         activebackground="#e68a00",
+                         activeforeground="white",
+                         bd=0,
+                         relief=FLAT,
+                         padx=20,
+                         pady=10)
+    next_button.pack(pady=(0, 15), fill=X)
+
+    exit_button = Button(buttons_frame,
+                         text="ЗАКРЫТЬ ПРИЛОЖЕНИЕ",
+                         font=("Arial", 14, 'bold'),
+                         command=lambda: main_window.destroy(),
+                         bg="#f44336",
+                         fg="white",
+                         activebackground="#d32f2f",
+                         activeforeground="white",
+                         bd=0,
+                         relief=FLAT,
+                         padx=20,
+                         pady=10)
+    exit_button.pack(fill=X)
+
+    separator = Frame(container, height=2, bg="#e0e0e0", bd=0)
+    separator.pack(fill=X, pady=20)
+
+    footer_label = Label(container,
+                         text="Контроль доступа в интернет",
+                         font=("Arial", 10),
+                         fg="#757575",
+                         bg="#ffffff")
+    footer_label.pack()
+
     main_window.attributes('-fullscreen', True)
     main_window.mainloop()
-

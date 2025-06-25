@@ -14,7 +14,6 @@ from selenium.webdriver.edge.service import Service as Edgeservice
 from selenium.webdriver.edge.options import Options as Edgeoptions
 from selenium.webdriver.chrome.service import Service as Chromeservice
 from selenium.webdriver.chrome.options import Options as Chromeoptions
-from selenium.common.exceptions import NoSuchDriverException
 import Edge_control
 import Firefox_control
 import Chrome_control
