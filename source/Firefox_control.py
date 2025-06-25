@@ -281,7 +281,7 @@ class App:
             return False
 
     def enforce_security_restrictions(self):
-        """Независимый мониторинг запрещенных приложений"""
+
         while self.is_running:
             try:
                 self.terminate_unauthorized_apps()
@@ -300,7 +300,7 @@ class App:
             time.sleep(1)
 
     def terminate_unauthorized_apps(self):
-        """Завершает все запрещенные приложения"""
+
         forbidden_apps = ["msedge.exe", "chrome.exe", "opera.exe", "roblox.exe",
                           "minecraft.exe", "yandex.exe", "tlauncher.exe",
                           "browser.exe", "rulauncher.exe", "java.exe"]
@@ -374,7 +374,7 @@ class App:
         lock_screen.mainloop()
 
     def monitor_browser_tabs(self):
-        """Мониторинг вкладок браузера"""
+
         while self.is_running:
             try:
                 if not self.verify_browser_process_active():
@@ -448,7 +448,7 @@ class App:
             print(f"Error in terminate_unauthorized_firefox_instances: {e}")
 
     def prevent_task_manager_usage(self):
-        """Блокировка диспетчера задач"""
+
         while self.is_running:
             try:
                 for proc in psutil.process_iter(['pid', 'name']):
