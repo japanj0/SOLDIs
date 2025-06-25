@@ -559,6 +559,16 @@ def main():
                                       font=("Arial", 12))
                 success_label.pack()
                 main_window.after(1000, success_label.destroy)
+            else:
+                domain_entry.delete(0, END)
+                confirm_button.config(state="disabled")
+                bad_label = Label(input_frame,
+                                  text=f"ВНИМАНИЕ! Вы уже вводили данный сайт",
+                                  fg="#F4A900",
+                                  bg="#ffffff",
+                                  font=("Arial", 12))
+                bad_label.pack()
+                main_window.after(2000, des_and_conf)
         else:
             domain_entry.delete(0, END)
             confirm_button.config(state="disabled")
