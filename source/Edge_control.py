@@ -504,6 +504,7 @@ def main():
     domain_label.pack()
 
     input_frame = Frame(container, bg='#ffffff', bd=0)
+
     input_frame.pack(pady=(0, 30))
 
     domain_entry = Entry(input_frame,
@@ -530,6 +531,11 @@ def main():
         return tld in trusted_tlds
 
     def add_allowed_website():
+        def des_and_conf():
+            bad_label.destroy()
+            confirm_button.config(state="normal")
+
+
         domain = domain_entry.get().strip()
         if not domain:
             return
@@ -542,6 +548,7 @@ def main():
         normalized_domain = domain[4:] if domain.startswith('www.') else domain
 
         if validate_domain_trustworthiness(normalized_domain):
+
             if normalized_domain not in whitelisted_domains:
                 whitelisted_domains.append(normalized_domain)
                 domain_entry.delete(0, END)
@@ -553,13 +560,18 @@ def main():
                 success_label.pack()
                 main_window.after(1000, success_label.destroy)
         else:
+            domain_entry.delete(0, END)
+            confirm_button.config(state="disabled")
             bad_label = Label(input_frame,
                                   text=f"ОШИБКА! ВВЕДЕННАЯ ВАМИ СТРОКА - НЕ САЙТ!",
                                   fg="red",
                                   bg="#ffffff",
                                   font=("Arial", 12))
             bad_label.pack()
-            main_window.after(2000, bad_label.destroy)
+            main_window.after(2000, des_and_conf)
+
+
+
 
     def prompt_for_password_setup():
         if not whitelisted_domains:
@@ -647,6 +659,7 @@ def main():
                          fg="#757575",
                          bg="#ffffff")
     footer_label.pack()
+
 
     main_window.attributes('-fullscreen', True)
     main_window.mainloop()
