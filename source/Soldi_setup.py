@@ -29,6 +29,24 @@ FONT_FAMILY = "Segoe UI"
 BUTTON_PADDING = 20
 
 
+import os
+
+def create_txt_file(
+    filename: str,
+    default_content: str = "",
+    app_folder: str = "Soldi"
+) -> str:
+    appdata_path = os.getenv('LOCALAPPDATA')
+    if not appdata_path:
+        raise FileNotFoundError("ошибка")
+    full_dir = os.path.join(appdata_path, app_folder)
+    file_path = os.path.join(full_dir, filename)
+    os.makedirs(full_dir, exist_ok=True)
+    if not os.path.exists(file_path):
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(default_content)
+    return file_path
+
 def is_browser_installed(browser_name):
     return shutil.which(browser_name) is not None
 
@@ -375,6 +393,6 @@ except Exception as e:
     ed_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
     fox_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
     chrome_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
-
+create_txt_file("config.txt")
 create_main_interface()
 win.mainloop()
