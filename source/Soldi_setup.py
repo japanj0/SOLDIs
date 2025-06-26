@@ -86,6 +86,18 @@ def cleanup_temp_files():
             except Exception as e:
                 print(f"Ошибка при удалении временного файла {file_path}: {e}")
 
+    try:
+        temp_dir = os.path.join(tempfile.gettempdir(), "_MEI")
+        for dirname in os.listdir(temp_dir):
+            if dirname.startswith("_MEI"):
+                dir_path = os.path.join(temp_dir, dirname)
+                try:
+                    shutil.rmtree(dir_path, ignore_errors=True)
+                except Exception as e:
+                    print(f"Ошибка при удалении временной директории {dir_path}: {e}")
+    except Exception as e:
+        print(f"Ошибка при очистке временных директорий PyInstaller: {e}")
+
 
 atexit.register(cleanup_temp_files)
 
