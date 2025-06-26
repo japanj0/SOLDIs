@@ -77,26 +77,7 @@ def extract_temp_image(resource_path):
 
 def cleanup_temp_files():
     temp_dir = os.path.join(tempfile.gettempdir(), "soldi_images")
-    if os.path.exists(temp_dir):
-        for filename in os.listdir(temp_dir):
-            file_path = os.path.join(temp_dir, filename)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-            except Exception as e:
-                print(f"Ошибка при удалении временного файла {file_path}: {e}")
-
-    try:
-        temp_dir = os.path.join(tempfile.gettempdir(), "_MEI")
-        for dirname in os.listdir(temp_dir):
-            if dirname.startswith("_MEI"):
-                dir_path = os.path.join(temp_dir, dirname)
-                try:
-                    shutil.rmtree(dir_path, ignore_errors=True)
-                except Exception as e:
-                    print(f"Ошибка при удалении временной директории {dir_path}: {e}")
-    except Exception as e:
-        print(f"Ошибка при очистке временных директорий PyInstaller: {e}")
+    shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 atexit.register(cleanup_temp_files)
@@ -237,7 +218,7 @@ def Firefox():
         try:
             progress.config(text="Инициализация драйвера...")
             win.update()
-
+            print(1)
             options = FireOptions()
             service = FirefoxService(timeout=3)
             options.add_argument('--headless')
@@ -245,11 +226,12 @@ def Firefox():
             options.add_argument(f"--user-data-dir={user_data_dir}")
             options.add_argument('--disable-gpu')
             options.add_argument('--no-sandbox')
-
+            print(1)
             progress.config(text="Загрузка браузера...")
             win.update()
 
             browser_driver = webdriver.Firefox(options=options, service=service)
+            print(1)
             browser_driver.quit()
 
             win.after(0, lambda: [win.destroy(), Firefox_control.main()])
