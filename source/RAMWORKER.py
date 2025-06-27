@@ -3,6 +3,7 @@ import psutil
 import os
 import sys
 import winreg as reg
+import io
 def clearing_RAM():
     drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe','msedge.exe']
     for proc in psutil.process_iter(['name']):
@@ -35,7 +36,7 @@ def write_txt_file(filename, content, app_folder="Soldi"):
     return True
 
 
-def add_to_autostart(app_name: str) -> bool:
+def add_to_autostart(app_name: str) -> str:
     try:
         if getattr(sys, 'frozen', False):
             app_path = sys.executable
@@ -53,10 +54,11 @@ def add_to_autostart(app_name: str) -> bool:
             errors='replace',
             shell=True
         )
-        return result.returncode == 0
+
+        return f"{result.returncode == 0, result.stderr, result.stdout}"
 
     except Exception:
-        return False
+        return "False"
 def remove_from_autostart(app_name: str) -> bool:
     try:
         result = subprocess.run(
