@@ -344,7 +344,7 @@ def create_main_interface():
     exit_button.pack(pady=(50, 0))
 
 
-require_admin()
+
 
 win = Tk()
 win.title("Выбор браузера")
@@ -387,8 +387,10 @@ try:
         ProcessBlocker(password=RAMWORKER.read_txt_file("config.txt").split()[1]).start()
 
     else:
+        require_admin()
         create_main_interface()
         win.mainloop()
 except Exception:
+    require_admin()
     create_main_interface()
     win.mainloop()

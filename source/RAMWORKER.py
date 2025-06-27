@@ -1,5 +1,7 @@
 import psutil
 import os
+import sys
+import winreg as reg
 def clearing_RAM():
     drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe','msedge.exe']
     for proc in psutil.process_iter(['name']):
@@ -30,3 +32,34 @@ def write_txt_file(filename, content, app_folder="Soldi"):
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(content)
     return True
+def add_to_autostart(app_name: str) -> bool:
+    try:
+        app_path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
+        key = reg.OpenKey(
+            reg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, reg.KEY_SET_VALUE
+        )
+        reg.SetValueEx(key, app_name, 0, reg.REG_SZ, app_path)
+        key.Close()
+        return True
+    except Exception as e:
+        print(f"Ошибка добавления в автозагрузку: {e}")
+        return False
+
+
+def remove_from_autostart(app_name: str) -> bool:
+    try:
+        key = reg.OpenKey(
+            reg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Run",
+            0, reg.KEY_SET_VALUE
+        )
+        reg.DeleteValue(key, app_name)
+        key.Close()
+        return True
+    except FileNotFoundError:
+        return True
+    except Exception as e:
+        print(f"Ошибка удаления из автозагрузки: {e}")
+        return False

