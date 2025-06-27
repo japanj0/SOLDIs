@@ -171,7 +171,7 @@ class ProcessBlocker:
         if self.pass_entry.get() == self.password:
             try:
                 RAMWORKER.write_txt_file("config.txt", "")
-                RAMWORKER.remove_from_autostart("Soldi.exe")
+                RAMWORKER.remove_from_autostart("Soldi")
                 self.running = False
                 self._block_registry_tools(False)
                 self._remove_from_startup()

@@ -33,25 +33,40 @@ def write_txt_file(filename, content, app_folder="Soldi"):
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(content)
     return True
+
+
 def add_to_autostart(app_name: str) -> bool:
     try:
-        app_path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
-        result = subprocess.run([
-            "schtasks", "/create", "/tn", app_name,
-            "/sc", "onlogon", "/rl", "highest",
-            "/tr", f'"{app_path}"', "/f"
-        ], capture_output=True, text=True, shell=True)
-        return result.returncode == 0
-    except Exception as e:
-        print(f"Ошибка добавления в планировщик: {e}")
-        return False
+        if getattr(sys, 'frozen', False):
+            app_path = sys.executable
+        else:
+            app_path = os.path.abspath(__file__)
 
+        result = subprocess.run(
+            [
+                "schtasks", "/create", "/tn", app_name,
+                "/sc", "onlogon", "/rl", "highest",
+                "/tr", app_path, "/f"
+            ],
+            capture_output=True,
+            encoding='utf-8',
+            errors='replace',
+            shell=True
+        )
+        return result.returncode == 0
+
+    except Exception:
+        return False
 def remove_from_autostart(app_name: str) -> bool:
     try:
-        result = subprocess.run([
-            "schtasks", "/delete", "/tn", app_name, "/f"
-        ], capture_output=True, text=True, shell=True)
+        result = subprocess.run(
+            ["schtasks", "/delete", "/tn", app_name, "/f"],
+            capture_output=True,
+            encoding='utf-8',
+            errors='replace',
+            shell=True
+        )
         return result.returncode == 0
-    except Exception as e:
-        print(f"Ошибка удаления из планировщика: {e}")
+
+    except Exception:
         return False
