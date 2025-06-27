@@ -10,12 +10,23 @@ def clearing_RAM():
                 print(proc.info['name'])
             except Exception as e:
                 print(e)
-def read_txt_file(filename: str) -> str:
-    """Reads content from a text file in AppData/Local/MyApp"""
-    try:
-        file_path = create_txt_file(filename)  # Ensures file exists
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    except Exception as e:
-        print(f"Read error: {e}")
-        return ""
+def create_txt_file(filename, default_content="", app_folder="MyApp"):
+    appdata_path = os.getenv('LOCALAPPDATA')
+    full_dir = os.path.join(appdata_path, app_folder)
+    file_path = os.path.join(full_dir, filename)
+    os.makedirs(full_dir, exist_ok=True)
+    if not os.path.exists(file_path):
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(default_content)
+    return file_path
+
+def read_txt_file(filename, app_folder="Soldi"):
+    file_path = create_txt_file(filename, "", app_folder)
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+def write_txt_file(filename, content, app_folder="Soldi"):
+    file_path = create_txt_file(filename, "", app_folder)
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+    return True

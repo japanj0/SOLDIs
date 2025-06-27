@@ -286,6 +286,7 @@ class App:
         def close_program():
             self.is_running = False
             RAMWORKER.clearing_RAM()
+            RAMWORKER.write_txt_file("config.txt", "1")
             if password_entry.get() == self.unlock_password:
                 lock_screen.destroy()
                 try:
