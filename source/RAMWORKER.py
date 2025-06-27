@@ -1,3 +1,4 @@
+import subprocess
 import psutil
 import os
 import sys
@@ -35,31 +36,22 @@ def write_txt_file(filename, content, app_folder="Soldi"):
 def add_to_autostart(app_name: str) -> bool:
     try:
         app_path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
-        key = reg.OpenKey(
-            reg.HKEY_CURRENT_USER,
-            r"Software\Microsoft\Windows\CurrentVersion\Run",
-            0, reg.KEY_SET_VALUE
-        )
-        reg.SetValueEx(key, app_name, 0, reg.REG_SZ, app_path)
-        key.Close()
-        return True
+        result = subprocess.run([
+            "schtasks", "/create", "/tn", app_name,
+            "/sc", "onlogon", "/rl", "highest",
+            "/tr", f'"{app_path}"', "/f"
+        ], capture_output=True, text=True, shell=True)
+        return result.returncode == 0
     except Exception as e:
-        print(f"Ошибка добавления в автозагрузку: {e}")
+        print(f"Ошибка добавления в планировщик: {e}")
         return False
-
 
 def remove_from_autostart(app_name: str) -> bool:
     try:
-        key = reg.OpenKey(
-            reg.HKEY_CURRENT_USER,
-            r"Software\Microsoft\Windows\CurrentVersion\Run",
-            0, reg.KEY_SET_VALUE
-        )
-        reg.DeleteValue(key, app_name)
-        key.Close()
-        return True
-    except FileNotFoundError:
-        return True
+        result = subprocess.run([
+            "schtasks", "/delete", "/tn", app_name, "/f"
+        ], capture_output=True, text=True, shell=True)
+        return result.returncode == 0
     except Exception as e:
-        print(f"Ошибка удаления из автозагрузки: {e}")
+        print(f"Ошибка удаления из планировщика: {e}")
         return False
