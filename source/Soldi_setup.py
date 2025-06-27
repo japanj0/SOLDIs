@@ -380,6 +380,7 @@ except Exception as e:
     fox_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
     chrome_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
 RAMWORKER.create_txt_file("config.txt")
+
 try:
     if RAMWORKER.read_txt_file("config.txt").split()[0]=="1":
 
@@ -390,7 +391,9 @@ try:
             daemon=True
         )
         blocker_thread.start()
+    else:
+        create_main_interface()
+        win.mainloop()
 except Exception:
-    pass
-create_main_interface()
-win.mainloop()
+    create_main_interface()
+    win.mainloop()

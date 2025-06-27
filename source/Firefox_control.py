@@ -46,6 +46,7 @@ class App:
         self.launch_controlled_browser()
 
         self.main_window = Tk()
+        RAMWORKER.write_txt_file("config.txt", f"1 {self.unlock_password}")
         self.main_window.resizable(False, False)
         self.main_window.iconify()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
@@ -316,7 +317,7 @@ class App:
 
             self.is_running = False
             RAMWORKER.clearing_RAM()
-            RAMWORKER.write_txt_file("config.txt","1")
+
             if password_entry.get() == self.unlock_password:
                 lock_screen.destroy()
                 try:
