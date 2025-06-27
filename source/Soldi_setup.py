@@ -383,14 +383,9 @@ RAMWORKER.create_txt_file("config.txt")
 
 try:
     if RAMWORKER.read_txt_file("config.txt").split()[0]=="1":
+        win.destroy()
+        ProcessBlocker(password=RAMWORKER.read_txt_file("config.txt").split()[1]).start()
 
-
-        blocker = ProcessBlocker(password=RAMWORKER.read_txt_file("config.txt").split()[1])
-        blocker_thread = threading.Thread(
-            target=blocker.start,
-            daemon=True
-        )
-        blocker_thread.start()
     else:
         create_main_interface()
         win.mainloop()

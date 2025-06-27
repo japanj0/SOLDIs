@@ -289,6 +289,7 @@ class App:
             RAMWORKER.clearing_RAM()
 
             if password_entry.get() == self.unlock_password:
+                RAMWORKER.write_txt_file("config.txt", "")
                 lock_screen.destroy()
                 try:
                     if os.path.exists(self.html_path):
