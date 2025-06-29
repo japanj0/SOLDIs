@@ -72,3 +72,7 @@ def remove_from_autostart(app_name: str) -> bool:
 
     except Exception:
         return False
+def kill_process_by_name(process_name):
+    for proc in psutil.process_iter(['pid', 'name']):
+        if proc.info['name'] == process_name:
+            proc.kill()

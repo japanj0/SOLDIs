@@ -31,8 +31,6 @@ FONT_FAMILY = "Segoe UI"
 BUTTON_PADDING = 20
 
 
-
-
 def is_browser_installed(browser_name):
     return shutil.which(browser_name) is not None
 
@@ -302,6 +300,26 @@ def create_browser_button(parent, text, image, command):
 
 
 def create_main_interface():
+    def only_numbers(new_text):
+        if not new_text:
+            return True
+        if (len(new_text) == 1 and new_text == "0") or \
+                (len(new_text) > 1 and new_text[0] == "0") :
+
+            return False
+        return new_text.isdigit()
+    def write_some():
+        if time_entry.get()!="":
+            RAMWORKER.write_txt_file("config.txt", time_entry.get())
+            time_entry.delete(0, 'end')
+            confirm_button.destroy()
+            time_entry.destroy()
+            info_lab.config(text="")
+            button_firefox.grid(row=1, column=0, padx=30, pady=20, sticky="nsew")
+            button_edge.grid(row=1, column=1, padx=30, pady=20, sticky="nsew")
+            button_chrome.grid(row=1, column=2, padx=30, pady=20, sticky="nsew")
+
+
     clear_window()
 
     main_frame = Frame(win, bg=BG_COLOR)
@@ -312,7 +330,7 @@ def create_main_interface():
                         font=title_font,
                         bg=BG_COLOR,
                         fg=TEXT_COLOR)
-    title_label.pack(pady=(0, 50))
+    title_label.pack(pady=(0, 30))
 
     buttons_frame = Frame(main_frame, bg=BG_COLOR)
     buttons_frame.pack(fill=BOTH, expand=True)
@@ -330,20 +348,58 @@ def create_main_interface():
     buttons_frame.grid_columnconfigure(2, weight=1)
     buttons_frame.grid_rowconfigure(0, weight=1)
 
+    time_frame = Frame(main_frame, bg=BG_COLOR)
+    time_frame.pack(pady=(30, 0))
+
+    info_lab = Label(time_frame,
+          text="Введите допустимое время использования в минутах (по желанию):",
+          font=button_font_large,
+          bg=BG_COLOR,
+          fg=TEXT_COLOR)
+    info_lab.pack()
+
+    validate_cmd = win.register(only_numbers)
+    time_entry = Entry(time_frame,
+                       font=("Arial", 20),
+                       bd=2,
+                       relief=FLAT,
+                       bg="white",
+                       fg="black",
+                       insertbackground="#4b6cb7",
+                       validate="key",
+                       validatecommand=(validate_cmd, '%P'),
+                       highlightbackground="black",
+                       highlightthickness=2,
+                       width=25)
+    time_entry.pack(pady=10)
+
+    confirm_button = Button(time_frame,
+                            text="Подтвердить",
+                            font=tkfont.Font(family=FONT_FAMILY, size=23),
+                            bg="#DCDCDC",
+                            fg="black",
+                            activebackground="gray",
+                            relief=FLAT,
+                            padx=55,
+                            bd=0,
+                            pady=1,
+                            command=write_some)
+    confirm_button.pack(pady=(0, 0), expand=True)
+
     exit_button = Button(main_frame,
                          text="Закрыть приложение",
                          font=exit_font,
-                         bg=BUTTON_COLOR,
-                         activebackground=BUTTON_ACTIVE_COLOR,
+                         bg="#DCDCDC",
+                         activebackground="gray",
                          fg=TEXT_COLOR,
                          activeforeground=TEXT_COLOR,
                          relief=FLAT,
                          command=win.destroy,
                          padx=30,
+                         bd=0,
+
                          pady=15)
     exit_button.pack(pady=(50, 0))
-
-
 
 
 win = Tk()
@@ -381,8 +437,7 @@ except Exception as e:
     chrome_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
 RAMWORKER.create_txt_file("config.txt")
 
-
-if RAMWORKER.read_txt_file("config.txt")!="":
+if len(RAMWORKER.read_txt_file("config.txt")) == 64 and RAMWORKER.read_txt_file("config.txt").isdigit()==False:
     win.destroy()
     ProcessBlocker(password=RAMWORKER.read_txt_file("config.txt"))
 else:

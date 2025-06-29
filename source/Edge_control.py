@@ -18,8 +18,9 @@ import hashlib
 
 
 class App:
-    def __init__(self, whitelisted_domains, unlock_password):
+    def __init__(self, whitelisted_domains, unlock_password, time):
         self.whitelisted_domains = whitelisted_domains
+        self.time = time
         self.unlock_password = unlock_password
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.html_path = os.path.join(self.script_dir, "links.html")
@@ -51,7 +52,8 @@ class App:
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
         threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
-
+        if self.time != "":
+            self.main_window.after(int(self.time) * 60000, RAMWORKER.kill_process_by_name("msedge.exe"))
         self.main_window.mainloop()
 
     def create_browser_lock_mutex(self):
@@ -267,6 +269,7 @@ class App:
             self.browser_driver.implicitly_wait(1)
             self.browser_driver.maximize_window()
             self.browser_driver.execute_script("document.title = 'edgegi';")
+
 
         except Exception as e:
             self.browser_driver = None
@@ -578,6 +581,8 @@ def main():
             domain_label.config(font=("Arial", 16, 'bold'))
 
     def set_unlock_password():
+        time = RAMWORKER.read_txt_file("config.txt")
+        RAMWORKER.write_txt_file("config.txt", "")
         nonlocal unlock_password
         unlock_password = domain_entry.get()
         if not unlock_password:
@@ -589,7 +594,7 @@ def main():
             )
         else:
             main_window.destroy()
-            App(whitelisted_domains, unlock_password)
+            App(whitelisted_domains, unlock_password, time)
 
     confirm_button = Button(buttons_frame,
                             text="ДОБАВИТЬ ССЫЛКУ",
