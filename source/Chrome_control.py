@@ -15,6 +15,7 @@ import sys
 import RAMWORKER
 from urllib.parse import urlparse
 import idna
+import hashlib
 
 
 class App:
@@ -45,7 +46,7 @@ class App:
         self.launch_controlled_browser()
 
         self.main_window = Tk()
-        RAMWORKER.write_txt_file("config.txt", f"1 {self.unlock_password}")
+        RAMWORKER.write_txt_file("config.txt", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
         self.main_window.resizable(False, False)
         self.main_window.iconify()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
@@ -287,7 +288,7 @@ class App:
             self.is_running = False
             RAMWORKER.clearing_RAM()
 
-            if password_entry.get() == self.unlock_password:
+            if hashlib.sha256(password_entry.get().encode('utf-8')).hexdigest() == hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest():
                 RAMWORKER.write_txt_file("config.txt", "")
                 RAMWORKER.remove_from_autostart("Soldi")
                 lock_screen.destroy()

@@ -381,15 +381,11 @@ except Exception as e:
     chrome_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
 RAMWORKER.create_txt_file("config.txt")
 
-try:
-    if RAMWORKER.read_txt_file("config.txt").split()[0]=="1":
-        win.destroy()
-        ProcessBlocker(password=RAMWORKER.read_txt_file("config.txt").split()[1])
-    else:
-        require_admin()
-        create_main_interface()
-        win.mainloop()
-except Exception:
+
+if RAMWORKER.read_txt_file("config.txt")!="":
+    win.destroy()
+    ProcessBlocker(password=RAMWORKER.read_txt_file("config.txt"))
+else:
     require_admin()
     create_main_interface()
     win.mainloop()
