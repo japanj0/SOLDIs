@@ -4,6 +4,7 @@ import time
 import threading
 import RAMWORKER
 import hashlib
+import os
 
 class ProcessBlocker:
     def __init__(self, password):
@@ -75,10 +76,12 @@ class ProcessBlocker:
         separator.pack(fill='x', pady=20)
 
     def check_password(self):
-
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
             RAMWORKER.remove_from_autostart("Soldi")
             RAMWORKER.write_txt_file("config.txt","")
+            self.script_dir = os.path.dirname(os.path.abspath(__file__))
+            if os.path.exists(os.path.join(self.script_dir, "links.html")):
+                os.remove(os.path.join(self.script_dir, "links.html"))
             self.running = False
             self.root.destroy()
 
