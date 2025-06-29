@@ -52,8 +52,6 @@ class App:
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
         threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
-        threading.Thread(target=self.enforce_browser_window_state, daemon=True).start()
-        threading.Thread(target=self.prevent_task_manager_usage, daemon=True).start()
 
         self.main_window.mainloop()
 
@@ -288,7 +286,8 @@ class App:
             self.is_running = False
             RAMWORKER.clearing_RAM()
 
-            if hashlib.sha256(password_entry.get().encode('utf-8')).hexdigest() == hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest():
+            if hashlib.sha256(password_entry.get().encode('utf-8')).hexdigest() == hashlib.sha256(
+                    self.unlock_password.encode('utf-8')).hexdigest():
                 RAMWORKER.write_txt_file("config.txt", "")
                 RAMWORKER.remove_from_autostart("Soldi")
                 lock_screen.destroy()
@@ -307,7 +306,14 @@ class App:
                         pname = proc.info['name'].lower()
                         if pname in ["msedge.exe", "firefox.exe", "opera.exe", "roblox.exe",
                                      "minecraft.exe", "taskmgr.exe", "yandex.exe", "tlauncher.exe",
-                                     "browser.exe", "rulauncher.exe", "java.exe"]:
+                                     "browser.exe", "rulauncher.exe", "java.exe", "opera.exe", "yandex.exe",
+                                     "iexplore.exe",
+                                     "taskmgr.exe", "powershell.exe",
+                                     "regedit.exe", "mmc.exe", "control.exe",
+                                     "roblox.exe", "minecraft.exe", "tlauncher.exe",
+                                     "rulauncher.exe", "javaw.exe", "java.exe",
+                                     "discord.exe", "steam.exe", "epicgameslauncher.exe",
+                                     "battle.net.exe", "telegram.exe", "viber.exe", "browser.exe"]:
                             try:
                                 proc.terminate()
                             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
@@ -395,9 +401,9 @@ class App:
                 self.close_unauthorized_tabs()
                 self.browser_driver.switch_to.window(self.browser_driver.window_handles[0])
                 self.validate_current_url()
-                self.enforce_browser_window_state()
+
                 self.terminate_unauthorized_chrome_instances()
-                self.prevent_task_manager_usage()
+
             except Exception as e:
                 print(e)
             if self.is_running:
@@ -461,38 +467,6 @@ class App:
                     continue
         except Exception as e:
             print(f"Error in terminate_unauthorized_chrome_instances: {e}")
-
-    def enforce_browser_window_state(self):
-        try:
-            for proc in psutil.process_iter():
-                try:
-                    if proc.name().lower() in ["msedge.exe", "firefox.exe", "opera.exe", "roblox.exe",
-                                               "minecraft.exe", "taskmgr.exe", "yandex.exe", "tlauncher.exe",
-                                               "browser.exe", "rulauncher.exe", "java.exe"]:
-                        proc.terminate()
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    continue
-
-            self.terminate_unauthorized_chrome_instances()
-
-            if self.verify_browser_process_active():
-                browser_window = gw.getWindowsWithTitle("chromegi")
-                if browser_window:
-                    browser_window = browser_window[0]
-                    if browser_window.isMinimized:
-                        browser_window.restore()
-                    if not browser_window.isMaximized:
-                        browser_window.maximize()
-        except Exception as e:
-            print(e)
-
-    def prevent_task_manager_usage(self):
-        try:
-            for proc in psutil.process_iter(['pid', 'name']):
-                if proc.info['name'].lower() == 'taskmgr.exe':
-                    proc.kill()
-        except Exception:
-            pass
 
 
 def main():
@@ -583,10 +557,10 @@ def main():
             domain_entry.delete(0, END)
             confirm_button.config(state="disabled")
             bad_label = Label(input_frame,
-                                  text=f"ОШИБКА! ВВЕДЕННАЯ ВАМИ СТРОКА - НЕ САЙТ!",
-                                  fg="red",
-                                  bg="#ffffff",
-                                  font=("Arial", 12))
+                              text=f"ОШИБКА! ВВЕДЕННАЯ ВАМИ СТРОКА - НЕ САЙТ!",
+                              fg="red",
+                              bg="#ffffff",
+                              font=("Arial", 12))
             bad_label.pack()
             main_window.after(2000, des_and_conf)
 

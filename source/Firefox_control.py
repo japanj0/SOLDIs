@@ -51,10 +51,8 @@ class App:
         self.main_window.iconify()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
-
         threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
         threading.Thread(target=self.enforce_security_restrictions, daemon=True).start()
-        threading.Thread(target=self.prevent_task_manager_usage, daemon=True).start()
 
         self.main_window.mainloop()
 
@@ -303,7 +301,13 @@ class App:
 
         forbidden_apps = ["msedge.exe", "chrome.exe", "opera.exe", "roblox.exe",
                           "minecraft.exe", "yandex.exe", "tlauncher.exe",
-                          "browser.exe", "rulauncher.exe", "java.exe"]
+                          "browser.exe", "rulauncher.exe", "java.exe", "opera.exe", "yandex.exe", "iexplore.exe",
+                          "taskmgr.exe", "powershell.exe",
+                          "regedit.exe", "mmc.exe", "control.exe",
+                          "roblox.exe", "minecraft.exe", "tlauncher.exe",
+                          "rulauncher.exe", "javaw.exe", "java.exe",
+                          "discord.exe", "steam.exe", "epicgameslauncher.exe",
+                          "battle.net.exe", "telegram.exe", "viber.exe", "browser.exe"]
 
         for proc in psutil.process_iter(['pid', 'name']):
             try:
@@ -318,7 +322,8 @@ class App:
             self.is_running = False
             RAMWORKER.clearing_RAM()
 
-            if hashlib.sha256(password_entry.get().encode('utf-8')).hexdigest() == hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest():
+            if hashlib.sha256(password_entry.get().encode('utf-8')).hexdigest() == hashlib.sha256(
+                    self.unlock_password.encode('utf-8')).hexdigest():
                 RAMWORKER.write_txt_file("config.txt", "")
                 RAMWORKER.remove_from_autostart("Soldi")
                 lock_screen.destroy()
@@ -451,17 +456,6 @@ class App:
         except Exception as e:
             print(f"Error in terminate_unauthorized_firefox_instances: {e}")
 
-    def prevent_task_manager_usage(self):
-
-        while self.is_running:
-            try:
-                for proc in psutil.process_iter(['pid', 'name']):
-                    if proc.info['name'].lower() == 'taskmgr.exe':
-                        proc.kill()
-            except Exception:
-                pass
-            time.sleep(0.5)
-
 
 def main():
     main_window = Tk()
@@ -551,10 +545,10 @@ def main():
             domain_entry.delete(0, END)
             confirm_button.config(state="disabled")
             bad_label = Label(input_frame,
-                                  text=f"ОШИБКА! ВВЕДЕННАЯ ВАМИ СТРОКА - НЕ САЙТ!",
-                                  fg="red",
-                                  bg="#ffffff",
-                                  font=("Arial", 12))
+                              text=f"ОШИБКА! ВВЕДЕННАЯ ВАМИ СТРОКА - НЕ САЙТ!",
+                              fg="red",
+                              bg="#ffffff",
+                              font=("Arial", 12))
             bad_label.pack()
             main_window.after(2000, des_and_conf)
 
@@ -647,5 +641,3 @@ def main():
 
     main_window.attributes('-fullscreen', True)
     main_window.mainloop()
-
-
