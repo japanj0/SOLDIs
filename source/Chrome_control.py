@@ -54,7 +54,9 @@ class App:
 
         threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
         if self.time != "":
-            self.main_window.after(int(self.time) * 60000, RAMWORKER.kill_process_by_name("chrome.exe"))
+            self.main_window.after(int(self.time) * 60000, lambda: RAMWORKER.kill_process_by_name("chrome.exe"))
+
+
         self.main_window.mainloop()
 
     def create_browser_lock_mutex(self):
