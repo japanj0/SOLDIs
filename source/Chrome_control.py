@@ -31,8 +31,6 @@ class App:
         self.browser_driver = None
         self.main_window = None
         self.is_running = True
-        self.is_monitoring_active = True
-        self.browser_state = 1
         self.setup_browser_environment()
 
     def setup_browser_environment(self):

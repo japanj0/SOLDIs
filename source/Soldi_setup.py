@@ -384,8 +384,7 @@ RAMWORKER.create_txt_file("config.txt")
 try:
     if RAMWORKER.read_txt_file("config.txt").split()[0]=="1":
         win.destroy()
-        ProcessBlocker(password=RAMWORKER.read_txt_file("config.txt").split()[1]).start()
-
+        ProcessBlocker(password=RAMWORKER.read_txt_file("config.txt").split()[1])
     else:
         require_admin()
         create_main_interface()

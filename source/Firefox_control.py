@@ -30,8 +30,6 @@ class App:
         self.browser_driver = None
         self.main_window = None
         self.is_running = True
-        self.is_monitoring_active = True
-        self.browser_state = 1
         self.setup_browser_environment()
 
     def setup_browser_environment(self):
@@ -267,7 +265,6 @@ class App:
             self.browser_driver.maximize_window()
             self.browser_driver.execute_script("document.title = 'firefoxgi';")
 
-            self.browser_state = 2
         except Exception as e:
             print(e)
             self.browser_driver = None
