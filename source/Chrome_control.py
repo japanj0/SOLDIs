@@ -514,7 +514,7 @@ def main():
     buttons_frame.pack()
 
     def validate_domain_trustworthiness(url):
-        trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф'}
+        trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф', 'me'}
         parts = url.strip().split('.')
         if len(parts) < 2 or not parts[-2]:
             return False

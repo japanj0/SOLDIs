@@ -23,7 +23,7 @@ class App:
         self.unlock_password = unlock_password
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.html_path = os.path.join(self.script_dir, "links.html")
-        self.time=time
+        self.time = time
         self.initialize_app_state()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
@@ -501,7 +501,8 @@ def main():
     buttons_frame.pack()
 
     def validate_domain_trustworthiness(url):
-        trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф'}
+        trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф',
+                        'me'}
         parts = url.strip().split('.')
         if len(parts) < 2 or not parts[-2]:
             return False
