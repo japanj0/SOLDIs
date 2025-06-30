@@ -21,10 +21,10 @@ import hashlib
 class App:
     def __init__(self, whitelisted_domains, unlock_password, time):
         self.whitelisted_domains = whitelisted_domains
-        self.time = time
         self.unlock_password = unlock_password
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.html_path = os.path.join(self.script_dir, "links.html")
+        self.time = time
         self.initialize_app_state()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
@@ -48,15 +48,15 @@ class App:
 
         self.main_window = Tk()
         RAMWORKER.write_txt_file("config.txt", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
+
         self.main_window.resizable(False, False)
         self.main_window.iconify()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
         threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
+        threading.Thread(target=self.enforce_security_restrictions, daemon=True).start()
         if self.time != "":
             self.main_window.after(int(self.time) * 60000, lambda: RAMWORKER.kill_process_by_name("chrome.exe"))
-
-
         self.main_window.mainloop()
 
     def create_browser_lock_mutex(self):
@@ -271,11 +271,10 @@ class App:
             self.browser_driver.maximize_window()
             self.browser_driver.execute_script("document.title = 'chromegi';")
 
-
             self.browser_state = 2
         except Exception as e:
             print(e)
-            self.browser_driver = None
+            # self.browser_driver = None
 
     def verify_browser_process_active(self):
         if self.browser_driver is None:
@@ -286,8 +285,47 @@ class App:
         except WebDriverException:
             return False
 
+    def enforce_security_restrictions(self):
+
+        while self.is_running:
+            try:
+                self.terminate_unauthorized_apps()
+                self.terminate_unauthorized_chrome_instances()
+
+                if self.verify_browser_process_active():
+                    browser_window = gw.getWindowsWithTitle("chromegi")
+                    if browser_window:
+                        browser_window = browser_window[0]
+                        if browser_window.isMinimized:
+                            browser_window.restore()
+                        if not browser_window.isMaximized:
+                            browser_window.maximize()
+            except Exception as e:
+                print(f"Security restriction error: {e}")
+            time.sleep(0.5)
+
+    def terminate_unauthorized_apps(self):
+
+        forbidden_apps = ["msedge.exe", "firefox.exe", "opera.exe", "roblox.exe",
+                          "minecraft.exe", "yandex.exe", "tlauncher.exe",
+                          "browser.exe", "rulauncher.exe", "java.exe", "opera.exe", "yandex.exe", "iexplore.exe",
+                          "taskmgr.exe", "powershell.exe",
+                          "regedit.exe", "mmc.exe", "control.exe",
+                          "roblox.exe", "minecraft.exe", "tlauncher.exe",
+                          "rulauncher.exe", "javaw.exe", "java.exe",
+                          "discord.exe", "steam.exe", "epicgameslauncher.exe",
+                          "battle.net.exe", "telegram.exe", "viber.exe", "browser.exe"]
+
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                if proc.info['name'].lower() in forbidden_apps:
+                    proc.terminate()
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+
     def display_security_lock_screen(self):
         def close_program():
+
             self.is_running = False
             RAMWORKER.clearing_RAM()
 
@@ -303,51 +341,6 @@ class App:
                     pass
                 self.main_window.destroy()
                 raise SystemExit(0)
-
-        def enforce_security_restrictions():
-            while True:
-                try:
-                    for proc in psutil.process_iter(['pid', 'name']):
-                        pname = proc.info['name'].lower()
-                        if pname in ["msedge.exe", "firefox.exe", "opera.exe", "roblox.exe",
-                                     "minecraft.exe", "taskmgr.exe", "yandex.exe", "tlauncher.exe",
-                                     "browser.exe", "rulauncher.exe", "java.exe", "opera.exe", "yandex.exe",
-                                     "iexplore.exe",
-                                     "taskmgr.exe", "powershell.exe",
-                                     "regedit.exe", "mmc.exe", "control.exe",
-                                     "roblox.exe", "minecraft.exe", "tlauncher.exe",
-                                     "rulauncher.exe", "javaw.exe", "java.exe",
-                                     "discord.exe", "steam.exe", "epicgameslauncher.exe",
-                                     "battle.net.exe", "telegram.exe", "viber.exe", "browser.exe"]:
-                            try:
-                                proc.terminate()
-                            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                                pass
-                except Exception:
-                    pass
-
-                self.terminate_unauthorized_chrome_instances()
-
-                try:
-                    for proc in psutil.process_iter(['pid', 'name']):
-                        if proc.info['name'].lower() == 'taskmgr.exe':
-                            proc.kill()
-                except Exception:
-                    pass
-
-                try:
-                    if self.verify_browser_process_active():
-                        browser_window = gw.getWindowsWithTitle("chromegi")
-                        if browser_window:
-                            browser_window = browser_window[0]
-                            if browser_window.isMinimized:
-                                browser_window.restore()
-                            if not browser_window.isMaximized:
-                                browser_window.maximize()
-                except Exception as e:
-                    print(e)
-
-                time.sleep(0.5)
 
         lock_screen = Tk()
         lock_screen.protocol("WM_DELETE_WINDOW", self.handle_window_close)
@@ -394,25 +387,22 @@ class App:
         separator = Frame(content_frame, height=2, bg="#4b6cb7", bd=0)
         separator.pack(fill=X, pady=20)
 
-        threading.Thread(target=enforce_security_restrictions, daemon=True).start()
         lock_screen.mainloop()
 
     def monitor_browser_tabs(self):
+
         while self.is_running:
             try:
                 if not self.verify_browser_process_active():
                     self.display_security_lock_screen()
                     continue
+
                 self.close_unauthorized_tabs()
                 self.browser_driver.switch_to.window(self.browser_driver.window_handles[0])
                 self.validate_current_url()
-
-                self.terminate_unauthorized_chrome_instances()
-
             except Exception as e:
-                print(e)
-            if self.is_running:
-                time.sleep(0.43)
+                print(f"Browser monitoring error: {e}")
+            time.sleep(0.5)
 
     def close_unauthorized_tabs(self):
         if self.verify_browser_process_active() and len(self.browser_driver.window_handles) > 1:
@@ -514,7 +504,8 @@ def main():
     buttons_frame.pack()
 
     def validate_domain_trustworthiness(url):
-        trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф', 'me'}
+        trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф',
+                        'me'}
         parts = url.strip().split('.')
         if len(parts) < 2 or not parts[-2]:
             return False
@@ -592,7 +583,7 @@ def main():
 
     def set_unlock_password():
         time = RAMWORKER.read_txt_file("config.txt")
-        RAMWORKER.write_txt_file("config.txt","")
+        RAMWORKER.write_txt_file("config.txt", "")
         nonlocal unlock_password
         unlock_password = domain_entry.get()
         if not unlock_password:

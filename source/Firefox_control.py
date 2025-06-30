@@ -271,7 +271,7 @@ class App:
 
         except Exception as e:
             print(e)
-            self.browser_driver = None
+            # self.browser_driver = None
 
     def verify_browser_process_active(self):
         if self.browser_driver is None:
