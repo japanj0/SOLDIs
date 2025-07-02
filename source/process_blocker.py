@@ -88,7 +88,7 @@ class ProcessBlocker:
             for i in a:
                 if i.startswith("EdgePythonProfile_") or i.startswith("ChromePythonProfile_") or i.startswith(
                         "FirefoxPythonProfile_"):
-                    shutil.rmtree(f"C:\\Temp\\{i}")
+                    shutil.rmtree(f"C:\\Temp\\{i}", ignore_errors=True)
             self.root.destroy()
 
     def monitor_processes(self):

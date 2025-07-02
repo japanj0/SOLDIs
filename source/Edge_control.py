@@ -333,7 +333,7 @@ class App:
 
             if hashlib.sha256(password_entry.get().encode('utf-8')).hexdigest() == hashlib.sha256(
                     self.unlock_password.encode('utf-8')).hexdigest():
-                shutil.rmtree(self.user_data_dir)
+                shutil.rmtree(self.user_data_dir, ignore_errors=True)
                 RAMWORKER.write_txt_file("config.txt", "")
                 RAMWORKER.remove_from_autostart("Soldi")
                 lock_screen.destroy()

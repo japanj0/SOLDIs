@@ -5,8 +5,11 @@ import os
 import uuid
 from tkinter import *
 from urllib.parse import urlparse
+import zipfile
 import idna
+import requests
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.common.exceptions import WebDriverException
 import psutil
 import pygetwindow as gw
@@ -246,10 +249,47 @@ class App:
                 pass
             self.browser_driver = None
 
+        def get_latest_geckodriver_url():
+            response = requests.get("https://api.github.com/repos/mozilla/geckodriver/releases/latest")
+            response.raise_for_status()
+            assets = response.json()["assets"]
+            for asset in assets:
+                if "win64.zip" in asset["name"]:
+                    return asset["browser_download_url"]
+            raise Exception("Не найден win64.zip в релизе")
+
+        def setup_geckodriver():
+            temp_dir = os.path.join(os.environ["TEMP"], "geckodriver")
+            os.makedirs(temp_dir, exist_ok=True)
+            driver_path = os.path.join(temp_dir, "geckodriver.exe")
+
+            if os.path.exists(driver_path):
+                return driver_path
+
+            download_url = get_latest_geckodriver_url()
+            zip_path = os.path.join(temp_dir, "geckodriver.zip")
+
+            with requests.get(download_url, stream=True) as r:
+                r.raise_for_status()
+                with open(zip_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extract("geckodriver.exe", temp_dir)
+
+            os.remove(zip_path)
+            return driver_path
+
+        path = setup_geckodriver()
+        if not os.path.exists(path):
+            raise Exception("Geckodriver не скачан! Проверьте папку Temp.")
+
         options = Options()
         self.user_data_dir = f"C:\\Temp\\FirefoxPythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
 
+        service = FirefoxService(executable_path=path)
         options.set_preference("remote-debugging-port", 9222)
         options.add_argument(f"--user-data-dir={self.user_data_dir}")
         options.add_argument("--start-maximized")
@@ -260,7 +300,7 @@ class App:
         options.set_preference("app.update.enabled", False)
 
         try:
-            self.browser_driver = webdriver.Firefox(options=options)
+            self.browser_driver = webdriver.Firefox(options=options, service=service)
             RAMWORKER.add_to_autostart("Soldi")
             self.browser_driver.implicitly_wait(3)
             WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
@@ -329,7 +369,7 @@ class App:
 
             if hashlib.sha256(password_entry.get().encode('utf-8')).hexdigest() == hashlib.sha256(
                     self.unlock_password.encode('utf-8')).hexdigest():
-                shutil.rmtree(self.user_data_dir)
+                shutil.rmtree(self.user_data_dir, ignore_errors=True)
                 RAMWORKER.write_txt_file("config.txt", "")
                 RAMWORKER.remove_from_autostart("Soldi")
                 lock_screen.destroy()

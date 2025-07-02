@@ -10,6 +10,8 @@ import tempfile
 import atexit
 import ctypes
 from selenium import webdriver
+import zipfile
+import requests
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from selenium.webdriver.firefox.options import Options as FireOptions
 from selenium.webdriver.edge.service import Service as Edgeservice
@@ -218,28 +220,72 @@ def Firefox():
 
     def firefox_thread():
         try:
+            def get_latest_geckodriver_url():
+                response = requests.get("https://api.github.com/repos/mozilla/geckodriver/releases/latest")
+                response.raise_for_status()
+                assets = response.json()["assets"]
+                for asset in assets:
+                    if "win64.zip" in asset["name"]:
+                        return asset["browser_download_url"]
+                raise Exception("Не найден win64.zip в релизе")
+
+            def setup_geckodriver():
+                temp_dir = os.path.join(os.environ["TEMP"], "geckodriver")
+                os.makedirs(temp_dir, exist_ok=True)
+                driver_path = os.path.join(temp_dir, "geckodriver.exe")
+
+                if os.path.exists(driver_path):
+                    return driver_path
+
+                download_url = get_latest_geckodriver_url()
+                zip_path = os.path.join(temp_dir, "geckodriver.zip")
+
+                with requests.get(download_url, stream=True) as r:
+                    r.raise_for_status()
+                    with open(zip_path, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extract("geckodriver.exe", temp_dir)
+
+                os.remove(zip_path)
+                return driver_path
+
+            path = setup_geckodriver()
+            if not os.path.exists(path):
+                raise Exception("Geckodriver не скачан! Проверьте папку Temp.")
+
             progress.config(text="Инициализация драйвера...")
             win.update()
-            print(1)
+
+
             options = FireOptions()
-            service = FirefoxService(timeout=10)
+            service = FirefoxService(executable_path=path)
+
+
             options.add_argument('--headless')
-            user_data_dir = f"C:\\Temp\\FirefoxPythonProfile_{uuid.uuid4()}"
-            options.add_argument(f"--user-data-dir={user_data_dir}")
             options.add_argument('--disable-gpu')
-            options.add_argument('--no-sandbox')
-            print(1)
+
+
+            profile_path = f"C:\\Temp\\FirefoxProfile_{uuid.uuid4()}"
+            os.makedirs(profile_path, exist_ok=True)
+            options.add_argument('-profile')
+            options.add_argument(profile_path)
+
             progress.config(text="Загрузка браузера...")
             win.update()
 
-            browser_driver = webdriver.Firefox(options=options, service=service)
-            print(1)
-            browser_driver.quit()
-            shutil.rmtree(user_data_dir)
+
+            driver = webdriver.Firefox(options=options, service=service)
+            driver.quit()
+            shutil.rmtree(profile_path, ignore_errors=True)
+
+
             win.after(0, lambda: [win.destroy(), Firefox_control.main()])
 
         except Exception as e:
-            win.after(0, lambda: show_error(f"Ошибка при запуске Firefox {e}"))
+            win.after(0, lambda: show_error(f"Ошибка Firefox: {str(e)}"))
 
     threading.Thread(target=firefox_thread, daemon=True).start()
 
@@ -444,4 +490,3 @@ else:
     require_admin()
     create_main_interface()
     win.mainloop()
-input()
