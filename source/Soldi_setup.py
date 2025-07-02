@@ -204,7 +204,7 @@ def Edge():
 
             browser_driver = webdriver.Edge(options=options, service=service)
             browser_driver.quit()
-
+            shutil.rmtree(user_data_dir)
             win.after(0, lambda: [win.destroy(), Edge_control.main()])
 
         except Exception as e:
@@ -235,7 +235,7 @@ def Firefox():
             browser_driver = webdriver.Firefox(options=options, service=service)
             print(1)
             browser_driver.quit()
-
+            shutil.rmtree(user_data_dir)
             win.after(0, lambda: [win.destroy(), Firefox_control.main()])
 
         except Exception as e:
@@ -265,7 +265,7 @@ def Chrome():
 
             browser_driver = webdriver.Chrome(options=options, service=service)
             browser_driver.quit()
-
+            shutil.rmtree(user_data_dir)
             win.after(0, lambda: [win.destroy(), Chrome_control.main()])
 
         except Exception as e:

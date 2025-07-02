@@ -5,6 +5,7 @@ import threading
 import RAMWORKER
 import hashlib
 import os
+import shutil
 
 class ProcessBlocker:
     def __init__(self, password):
@@ -83,6 +84,11 @@ class ProcessBlocker:
             if os.path.exists(os.path.join(self.script_dir, "links.html")):
                 os.remove(os.path.join(self.script_dir, "links.html"))
             self.running = False
+            a = os.listdir(r"C:\Temp")
+            for i in a:
+                if i.startswith("EdgePythonProfile_") or i.startswith("ChromePythonProfile_") or i.startswith(
+                        "FirefoxPythonProfile_"):
+                    shutil.rmtree(f"C:\\Temp\\{i}")
             self.root.destroy()
 
     def monitor_processes(self):
