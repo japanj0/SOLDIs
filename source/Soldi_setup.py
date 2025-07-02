@@ -222,7 +222,7 @@ def Firefox():
             win.update()
             print(1)
             options = FireOptions()
-            service = FirefoxService(timeout=3)
+            service = FirefoxService(timeout=10)
             options.add_argument('--headless')
             user_data_dir = f"C:\\Temp\\FirefoxPythonProfile_{uuid.uuid4()}"
             options.add_argument(f"--user-data-dir={user_data_dir}")
@@ -239,7 +239,7 @@ def Firefox():
             win.after(0, lambda: [win.destroy(), Firefox_control.main()])
 
         except Exception as e:
-            win.after(0, lambda: show_error(f"Ошибка при запуске Firefox"))
+            win.after(0, lambda: show_error(f"Ошибка при запуске Firefox {e}"))
 
     threading.Thread(target=firefox_thread, daemon=True).start()
 
@@ -444,3 +444,4 @@ else:
     require_admin()
     create_main_interface()
     win.mainloop()
+input()
