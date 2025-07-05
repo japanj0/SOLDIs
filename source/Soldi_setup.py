@@ -1,7 +1,7 @@
 import sys
 import os
+import time
 import RAMWORKER
-import uuid
 from tkinter import *
 from tkinter import font as tkfont
 from PIL import Image, ImageTk
@@ -9,19 +9,12 @@ from process_blocker import ProcessBlocker
 import tempfile
 import atexit
 import ctypes
-from selenium import webdriver
-import zipfile
-import requests
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from selenium.webdriver.firefox.options import Options as FireOptions
-from selenium.webdriver.edge.service import Service as Edgeservice
-from selenium.webdriver.edge.options import Options as Edgeoptions
-from selenium.webdriver.chrome.service import Service as Chromeservice
-from selenium.webdriver.chrome.options import Options as Chromeoptions
+import subprocess
 import Edge_control
 import Firefox_control
 import Chrome_control
 import shutil
+import psutil
 import threading
 
 BG_COLOR = "#f5f5f5"
@@ -172,151 +165,62 @@ def clear_window():
 
 
 def Edge():
-    progress = show_loading_screen("Подготовка Microsoft Edge")
+    show_loading_screen("Подготовка Microsoft Edge")
 
     def edge_thread():
+        time.sleep(2)
         try:
-            progress.config(text="Инициализация драйвера...")
-            win.update()
-
-            options = Edgeoptions()
-            service = Edgeservice(timeout=3)
-            user_data_dir = f"C:\\Temp\\EdgePythonProfile_{uuid.uuid4()}"
-            os.makedirs(user_data_dir, exist_ok=True)
-
-            options.add_argument("--remote-debugging-port=9222")
-            options.add_argument(f"--user-data-dir={user_data_dir}")
-            options.add_argument("--start-maximized")
-            options.add_argument("--no-first-run")
-            options.add_argument("--no-remote")
-            options.add_argument("--disable-extensions")
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_argument("--ignore-certificate-errors")
-            options.add_argument("--disable-infobars")
-            options.add_argument("--disable-notifications")
-            options.add_argument("--disable-sync")
-            options.add_argument('--headless')
-            options.add_argument("--disable-cloud-import")
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option('useAutomationExtension', False)
-            options.add_argument("--app-name=cara")
-
-            progress.config(text="Загрузка браузера...")
-            win.update()
-
-            browser_driver = webdriver.Edge(options=options, service=service)
-            browser_driver.quit()
-            shutil.rmtree(user_data_dir)
+            os.startfile("msedge")
+            subprocess.Popen(
+                "taskkill /f /im msedge.exe",
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                shell=True
+            )
             win.after(0, lambda: [win.destroy(), Edge_control.main()])
-
-        except Exception as e:
-            win.after(0, lambda: show_error(f"Ошибка при запуске Edge"))
+        except FileNotFoundError:
+            win.after(0, lambda: show_error(f"Ошибка, Edge не установлен на вашем ПК"))
+        except Exception:
+            win.after(0, lambda: show_error(f"Произошла неизвестная ошибка"))
 
     threading.Thread(target=edge_thread, daemon=True).start()
 
 
 def Firefox():
-    progress = show_loading_screen("Подготовка Firefox")
+    show_loading_screen("Подготовка Firefox")
 
     def firefox_thread():
+        time.sleep(2)
         try:
-            def get_latest_geckodriver_url():
-                response = requests.get("https://api.github.com/repos/mozilla/geckodriver/releases/latest")
-                response.raise_for_status()
-                assets = response.json()["assets"]
-                for asset in assets:
-                    if "win64.zip" in asset["name"]:
-                        return asset["browser_download_url"]
-                raise Exception("Не найден win64.zip в релизе")
-
-            def setup_geckodriver():
-                temp_dir = os.path.join(os.environ["TEMP"], "geckodriver")
-                os.makedirs(temp_dir, exist_ok=True)
-                driver_path = os.path.join(temp_dir, "geckodriver.exe")
-
-                if os.path.exists(driver_path):
-                    return driver_path
-
-                download_url = get_latest_geckodriver_url()
-                zip_path = os.path.join(temp_dir, "geckodriver.zip")
-
-                with requests.get(download_url, stream=True) as r:
-                    r.raise_for_status()
-                    with open(zip_path, "wb") as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
-
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extract("geckodriver.exe", temp_dir)
-
-                os.remove(zip_path)
-                return driver_path
-
-            path = setup_geckodriver()
-            if not os.path.exists(path):
-                raise Exception("Geckodriver не скачан! Проверьте папку Temp.")
-
-            progress.config(text="Инициализация драйвера...")
-            win.update()
-
-
-            options = FireOptions()
-            service = FirefoxService(executable_path=path)
-
-
-            options.add_argument('--headless')
-            options.add_argument('--disable-gpu')
-
-
-            profile_path = f"C:\\Temp\\FirefoxProfile_{uuid.uuid4()}"
-            os.makedirs(profile_path, exist_ok=True)
-            options.add_argument('-profile')
-            options.add_argument(profile_path)
-
-            progress.config(text="Загрузка браузера...")
-            win.update()
-
-
-            driver = webdriver.Firefox(options=options, service=service)
-            driver.quit()
-            shutil.rmtree(profile_path, ignore_errors=True)
-
-
+            os.startfile("firefox")
+            for proc in psutil.process_iter(['pid', 'name']):
+                if proc.info['name'] == "firefox.exe":
+                        proc.kill()
             win.after(0, lambda: [win.destroy(), Firefox_control.main()])
-
-        except Exception as e:
-            win.after(0, lambda: show_error(f"Ошибка Firefox: {str(e)}"))
+        except FileNotFoundError :
+            win.after(0, lambda: show_error(f"Ошибка, Firefox не установлен на вашем ПК"))
+        except Exception:
+            win.after(0, lambda: show_error(f"Произошла неизвестная ошибка"))
 
     threading.Thread(target=firefox_thread, daemon=True).start()
 
 
 def Chrome():
-    progress = show_loading_screen("Подготовка Google Chrome")
+    show_loading_screen("Подготовка Google Chrome")
 
     def chrome_thread():
+        time.sleep(2)
         try:
-            progress.config(text="Инициализация драйвера...")
-            win.update()
-
-            options = Chromeoptions()
-            service = Chromeservice(timeout=3)
-            options.add_argument('--headless')
-            options.add_argument('--disable-gpu')
-            user_data_dir = f"C:\\Temp\\ChromePythonProfile_{uuid.uuid4()}"
-            options.add_argument(f"--user-data-dir={user_data_dir}")
-            options.add_argument('--no-sandbox')
-
-            progress.config(text="Загрузка браузера...")
-            win.update()
-
-            browser_driver = webdriver.Chrome(options=options, service=service)
-            browser_driver.quit()
-            shutil.rmtree(user_data_dir)
-            win.after(0, lambda: [win.destroy(), Chrome_control.main()])
-
-        except Exception as e:
-            win.after(0, lambda: show_error(f"Ошибка при запуске Chrome"))
-
+                os.startfile("chrome")
+                subprocess.Popen(
+                    "taskkill /f /im chrome.exe",
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    shell=True
+                )
+                win.after(0, lambda: [win.destroy(), Chrome_control.main()])
+        except FileNotFoundError:
+                win.after(0, lambda: show_error(f"Ошибка, Chrome не установлен на вашем ПК"))
+        except Exception:
+                win.after(0, lambda: show_error(f"Произошла неизвестная ошибка"))
     threading.Thread(target=chrome_thread, daemon=True).start()
 
 
