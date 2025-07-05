@@ -125,7 +125,7 @@ def show_error(message):
     button_frame.pack(pady=30)
 
     retry_btn = Button(button_frame,
-                       text="ПОВТОРИТЬ",
+                       text="НАЗАД",
                        font=("Arial", 16, "bold"),
                        bg=ACCENT_COLOR,
                        fg="white",
@@ -178,7 +178,7 @@ def Edge():
             )
             win.after(0, lambda: [win.destroy(), Edge_control.main()])
         except FileNotFoundError:
-            win.after(0, lambda: show_error(f"Ошибка, Edge не установлен на вашем ПК"))
+            win.after(0, lambda: show_error(f"Edge не установлен на вашем ПК"))
         except Exception:
             win.after(0, lambda: show_error(f"Произошла неизвестная ошибка"))
 
@@ -197,7 +197,7 @@ def Firefox():
                         proc.kill()
             win.after(0, lambda: [win.destroy(), Firefox_control.main()])
         except FileNotFoundError :
-            win.after(0, lambda: show_error(f"Ошибка, Firefox не установлен на вашем ПК"))
+            win.after(0, lambda: show_error(f"Firefox не установлен на вашем ПК"))
         except Exception:
             win.after(0, lambda: show_error(f"Произошла неизвестная ошибка"))
 
@@ -218,7 +218,7 @@ def Chrome():
                 )
                 win.after(0, lambda: [win.destroy(), Chrome_control.main()])
         except FileNotFoundError:
-                win.after(0, lambda: show_error(f"Ошибка, Chrome не установлен на вашем ПК"))
+                win.after(0, lambda: show_error(f"Chrome не установлен на вашем ПК"))
         except Exception:
                 win.after(0, lambda: show_error(f"Произошла неизвестная ошибка"))
     threading.Thread(target=chrome_thread, daemon=True).start()
@@ -300,16 +300,16 @@ def create_main_interface():
 
     time_frame = Frame(main_frame, bg=BG_COLOR)
     time_frame.pack(pady=(30, 0))
-
-    info_lab = Label(time_frame,
+    if not RAMWORKER.read_txt_file("config.txt"):
+        info_lab = Label(time_frame,
           text="Введите допустимое время использования в минутах (по желанию):",
           font=button_font_large,
           bg=BG_COLOR,
           fg=TEXT_COLOR)
-    info_lab.pack()
+        info_lab.pack()
 
-    validate_cmd = win.register(only_numbers)
-    time_entry = Entry(time_frame,
+        validate_cmd = win.register(only_numbers)
+        time_entry = Entry(time_frame,
                        font=("Arial", 20),
                        bd=2,
                        relief=FLAT,
@@ -321,9 +321,9 @@ def create_main_interface():
                        highlightbackground="black",
                        highlightthickness=2,
                        width=25)
-    time_entry.pack(pady=10)
+        time_entry.pack(pady=10)
 
-    confirm_button = Button(time_frame,
+        confirm_button = Button(time_frame,
                             text="Подтвердить",
                             font=tkfont.Font(family=FONT_FAMILY, size=23),
                             bg="#DCDCDC",
@@ -334,7 +334,7 @@ def create_main_interface():
                             bd=0,
                             pady=1,
                             command=write_some)
-    confirm_button.pack(pady=(0, 0), expand=True)
+        confirm_button.pack(pady=(0, 0), expand=True)
 
     exit_button = Button(main_frame,
                          text="Закрыть приложение",
@@ -391,6 +391,7 @@ if len(RAMWORKER.read_txt_file("config.txt")) == 64 and RAMWORKER.read_txt_file(
     win.destroy()
     ProcessBlocker(password=RAMWORKER.read_txt_file("config.txt"))
 else:
+    RAMWORKER.write_txt_file("config.txt","")
     require_admin()
     create_main_interface()
     win.mainloop()
