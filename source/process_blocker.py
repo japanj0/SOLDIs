@@ -5,11 +5,14 @@ import threading
 import RAMWORKER
 import hashlib
 import os
+import keyboard
 import shutil
+import sys
+
 
 class ProcessBlocker:
     def __init__(self, password):
-        self.password = password
+        self.password = hashlib.sha256(password.encode('utf-8')).hexdigest()
         self.running = True
         self.blocked_apps = [
             "msedge.exe", "chrome.exe", "firefox.exe",
@@ -19,7 +22,8 @@ class ProcessBlocker:
             "roblox.exe", "minecraft.exe", "tlauncher.exe",
             "rulauncher.exe", "javaw.exe", "java.exe",
             "discord.exe", "steam.exe", "epicgameslauncher.exe",
-            "battle.net.exe", "telegram.exe", "viber.exe", "browser.exe"
+            "battle.net.exe", "telegram.exe", "viber.exe",
+            "browser.exe", "cmd.exe", "powershell.exe"
         ]
 
         self.monitor_thread = threading.Thread(target=self.monitor_processes)
@@ -33,8 +37,31 @@ class ProcessBlocker:
         self.root.protocol("WM_DELETE_WINDOW", lambda: None)
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='#1a1a1a')
+
+        keyboard.add_hotkey('ctrl+shift+p', self.emergency_exit)
+
         self.create_lock_screen()
         self.root.mainloop()
+
+    def emergency_exit(self):
+        RAMWORKER.MEI_del()
+        RAMWORKER.write_txt_file("config.txt", "")
+        RAMWORKER.remove_from_autostart("Soldi")
+        self.cleanup()
+        self.root.destroy()
+        sys.exit()
+
+    def cleanup(self):
+        temp_dir = r"C:\Temp"
+        if os.path.exists(temp_dir):
+            for item in os.listdir(temp_dir):
+                if item.startswith(("EdgePythonProfile_", "ChromePythonProfile_", "FirefoxPythonProfile_")):
+                    shutil.rmtree(os.path.join(temp_dir, item), ignore_errors=True)
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        html_path = os.path.join(script_dir, "links.html")
+        if os.path.exists(html_path):
+            os.remove(html_path)
 
     def create_lock_screen(self):
         content_frame = tk.Frame(self.root, bg='#2d2d2d', bd=0, highlightthickness=0, padx=40, pady=40)
@@ -78,27 +105,19 @@ class ProcessBlocker:
 
     def check_password(self):
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
+            RAMWORKER.MEI_del()
             RAMWORKER.remove_from_autostart("Soldi")
-            RAMWORKER.write_txt_file("config.txt","")
-            self.script_dir = os.path.dirname(os.path.abspath(__file__))
-            if os.path.exists(os.path.join(self.script_dir, "links.html")):
-                os.remove(os.path.join(self.script_dir, "links.html"))
+            RAMWORKER.write_txt_file("config.txt", "")
+            self.cleanup()
             self.running = False
-            a = os.listdir(r"C:\Temp")
-            for i in a:
-                if i.startswith("EdgePythonProfile_") or i.startswith("ChromePythonProfile_") or i.startswith(
-                        "FirefoxPythonProfile_"):
-                    shutil.rmtree(f"C:\\Temp\\{i}", ignore_errors=True)
             self.root.destroy()
 
     def monitor_processes(self):
         while self.running:
             for proc in psutil.process_iter(['name']):
-                if proc.info['name'].lower() in self.blocked_apps:
-                    try:
+                try:
+                    if proc.info['name'].lower() in self.blocked_apps:
                         proc.kill()
-                    except:
-                        pass
+                except:
+                    pass
             time.sleep(1)
-
-

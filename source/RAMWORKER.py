@@ -2,8 +2,7 @@ import subprocess
 import psutil
 import os
 import sys
-import winreg as reg
-import io
+import shutil
 def clearing_RAM():
     drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe','msedge.exe']
     for proc in psutil.process_iter(['name']):
@@ -76,3 +75,10 @@ def kill_process_by_name(process_name):
     for proc in psutil.process_iter(['pid', 'name']):
         if proc.info['name'] == process_name:
             proc.kill()
+def MEI_del():
+    temp_dir = os.environ["TEMP"]
+    for item in os.listdir(temp_dir):
+        if item.startswith("MEI"):
+            item_path = os.path.join(temp_dir, item)
+            if os.path.isdir(item_path):
+                shutil.rmtree(item_path, ignore_errors=True)
