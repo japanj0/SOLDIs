@@ -248,7 +248,7 @@ class App:
         options = Options()
         self.user_data_dir = f"C:\\Temp\\ChromePythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
-
+        options.add_argument("--remote-debugging-port=9222")
         options.add_argument(f"--user-data-dir={self.user_data_dir}")
         options.add_argument("--start-maximized")
         options.add_argument("--no-default-browser-check")
