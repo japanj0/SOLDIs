@@ -8,12 +8,13 @@ from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 import psutil
 import pygetwindow as gw
+from tkinter import messagebox
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
 import shutil
 import RAMWORKER
-from urllib.parse import urlparse
+from urllib.parse import *
 import idna
 import keyboard
 import sys
@@ -248,6 +249,7 @@ class App:
             self.browser_driver = None
 
         options = Options()
+        options.page_load_strategy = "none"
         self.user_data_dir = f"C:\\Temp\\ChromePythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
         options.add_argument("--remote-debugging-port=9222")
@@ -255,6 +257,7 @@ class App:
         options.add_argument("--start-maximized")
         options.add_argument("--no-default-browser-check")
         options.add_argument("--no-first-run")
+        options.add_argument("--kiosk")
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-popup-blocking")
         options.add_argument("--disable-default-apps")
@@ -265,6 +268,7 @@ class App:
 
         try:
             self.browser_driver = webdriver.Chrome(options=options)
+
             RAMWORKER.add_to_autostart("Soldi")
             self.browser_driver.implicitly_wait(3)
             WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
@@ -431,16 +435,22 @@ class App:
         try:
             if not self.verify_browser_process_active():
                 return
-
             current_url = self.browser_driver.current_url
-            if current_url.startswith("file:///") and "links.html" in current_url:
-                return
-
+            if current_url.startswith("file://"):
+                decoded_url = unquote(current_url)
+                actual_path = urlparse(decoded_url).path.lstrip('/')
+                expected_path = os.path.abspath(self.html_path).replace("\\", "/")
+                actual_path_abs = os.path.abspath(actual_path).replace("\\", "/")
+                if expected_path == actual_path_abs:
+                    return
+                else:
+                    self.browser_driver.execute_script("window.stop();")
+                    local_page = self.generate_allowed_sites_html()
+                    self.browser_driver.get(local_page)
+                    return
             parsed_url = urlparse(current_url)
             domain = parsed_url.netloc.split(':')[0]
-
             normalized_domain = domain[4:] if domain.startswith('www.') else domain
-
             domain_allowed = any(
                 allowed_domain == normalized_domain or
                 allowed_domain == domain or
@@ -448,8 +458,8 @@ class App:
                 idna.encode(allowed_domain).decode('ascii') == normalized_domain
                 for allowed_domain in self.whitelisted_domains
             )
-
             if not domain_allowed:
+                self.browser_driver.execute_script("window.stop();")
                 local_page = self.generate_allowed_sites_html()
                 self.browser_driver.get(local_page)
 

@@ -288,6 +288,7 @@ class App:
             raise Exception("Geckodriver не скачан! Проверьте папку Temp.")
 
         options = Options()
+        options.page_load_strategy = "none"
         self.user_data_dir = f"C:\\Temp\\FirefoxPythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
 
