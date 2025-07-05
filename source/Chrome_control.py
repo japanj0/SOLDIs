@@ -457,26 +457,16 @@ class App:
             self.browser_driver = None
 
     def terminate_unauthorized_chrome_instances(self):
-        try:
-            controlled_pids = set()
-            if self.browser_driver:
-                chrome_pid = self.browser_driver.service.process.pid
-                controlled_pids.add(chrome_pid)
-                try:
-                    parent = psutil.Process(chrome_pid)
-                    for child in parent.children(recursive=True):
-                        controlled_pids.add(child.pid)
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
-            for proc in psutil.process_iter(['pid', 'name']):
-                try:
-                    if proc.info['name'].lower() == 'chrome.exe' and proc.info['pid'] not in controlled_pids:
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                if "chrome.exe" in proc.info['name'].lower():
+                    cmdline = proc.info['cmdline']
+                    if cmdline and any("--user-data-dir=C:\\Temp\\ChromePythonProfile" in arg for arg in cmdline):
+                        pass
+                    else:
                         proc.terminate()
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    continue
-        except Exception as e:
-            print(f"Error in terminate_unauthorized_chrome_instances: {e}")
-
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
 
 def main():
     main_window = Tk()
