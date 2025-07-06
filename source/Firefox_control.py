@@ -52,6 +52,8 @@ class App:
         self.launch_controlled_browser()
 
         self.main_window = Tk()
+        self.main_window.title("soldi")
+        self.main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
         RAMWORKER.write_txt_file("config.txt", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
 
         self.main_window.resizable(False, False)
@@ -395,6 +397,8 @@ class App:
             sys.exit()
 
         lock_screen = Tk()
+        lock_screen.title("soldi")
+        lock_screen.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
         keyboard.add_hotkey('ctrl+shift+alt+p+q+n', on_hotkey)
         lock_screen.protocol("WM_DELETE_WINDOW", self.handle_window_close)
         lock_screen.attributes('-fullscreen', True)
@@ -526,6 +530,8 @@ class App:
 
 def main():
     main_window = Tk()
+    main_window.title("soldi")
+    main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
     whitelisted_domains = []
     unlock_password = ""
 

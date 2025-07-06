@@ -34,6 +34,8 @@ class ProcessBlocker:
 
     def init_ui(self):
         self.root = tk.Tk()
+        self.root.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
+        self.root.title("soldi")
         self.root.protocol("WM_DELETE_WINDOW", lambda: None)
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='#1a1a1a')

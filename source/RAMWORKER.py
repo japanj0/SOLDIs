@@ -3,6 +3,7 @@ import psutil
 import os
 import sys
 import shutil
+import tempfile
 def clearing_RAM():
     drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe','msedge.exe']
     for proc in psutil.process_iter(['name']):
@@ -82,3 +83,26 @@ def MEI_del():
             item_path = os.path.join(temp_dir, item)
             if os.path.isdir(item_path):
                 shutil.rmtree(item_path, ignore_errors=True)
+
+
+def get_icon_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")
+    resource_path = os.path.join(base_path, relative_path)
+    if not hasattr(sys, '_MEIPASS'):
+        return resource_path
+    temp_dir = os.path.join(tempfile.gettempdir(), "soldi_images")
+    os.makedirs(temp_dir, exist_ok=True)
+    filename = os.path.basename(resource_path)
+    temp_path = os.path.join(temp_dir, filename)
+    if os.path.exists(temp_path):
+        return temp_path
+    try:
+        with open(resource_path, 'rb') as src, open(temp_path, 'wb') as dst:
+            dst.write(src.read())
+        return temp_path
+    except Exception as e:
+        print(f"Ошибка при извлечении изображения: {e}")
+        return None

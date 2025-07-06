@@ -285,9 +285,9 @@ def create_main_interface():
     buttons_frame = Frame(main_frame, bg=BG_COLOR)
     buttons_frame.pack(fill=BOTH, expand=True)
 
-    button_firefox = create_browser_button(buttons_frame, "Firefox browser", fox_im, Firefox)
-    button_edge = create_browser_button(buttons_frame, "Microsoft Edge", ed_im, Edge)
-    button_chrome = create_browser_button(buttons_frame, "Google Chrome", chrome_im, Chrome)
+    button_firefox = create_browser_button(buttons_frame, "Firefox", fox_im, Firefox)
+    button_edge = create_browser_button(buttons_frame, "Edge", ed_im, Edge)
+    button_chrome = create_browser_button(buttons_frame, "Chrome", chrome_im, Chrome)
 
     button_firefox.grid(row=0, column=0, padx=30, pady=20, sticky="nsew")
     button_edge.grid(row=0, column=1, padx=30, pady=20, sticky="nsew")
@@ -302,8 +302,8 @@ def create_main_interface():
     time_frame.pack(pady=(30, 0))
     if not RAMWORKER.read_txt_file("config.txt"):
         info_lab = Label(time_frame,
-          text="Введите допустимое время использования в минутах (по желанию):",
-          font=button_font_large,
+          text="Введите допустимое время\nиспользования в минутах (по желанию):",
+          font=tkfont.Font(family=FONT_FAMILY, size=14, weight="bold"),
           bg=BG_COLOR,
           fg=TEXT_COLOR)
         info_lab.pack()
@@ -353,6 +353,8 @@ def create_main_interface():
 
 
 win = Tk()
+win.title("soldi")
+win.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
 win.title("Выбор браузера")
 win.configure(background=BG_COLOR)
 win.attributes('-fullscreen', True)
