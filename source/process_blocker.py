@@ -47,7 +47,7 @@ class ProcessBlocker:
 
     def emergency_exit(self):
         RAMWORKER.MEI_del()
-        RAMWORKER.write_txt_file("config.txt", "")
+        RAMWORKER.delete_sldid_file("data")
         RAMWORKER.remove_from_autostart("Soldi")
         self.cleanup()
         self.root.destroy()
@@ -106,12 +106,10 @@ class ProcessBlocker:
         separator.pack(fill='x', pady=20)
 
     def check_password(self):
-        with open("d.txt","a") as a:
-            a.write(f"{hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest()} {self.password}")
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
             RAMWORKER.MEI_del()
             RAMWORKER.remove_from_autostart("Soldi")
-            RAMWORKER.write_txt_file("config.txt", "")
+            RAMWORKER.delete_sldid_file("data")
             self.cleanup()
             self.running = False
             self.root.destroy()

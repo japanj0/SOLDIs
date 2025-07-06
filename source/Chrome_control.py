@@ -52,7 +52,7 @@ class App:
         self.main_window = Tk()
         self.main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
         self.main_window.title("soldi")
-        RAMWORKER.write_txt_file("config.txt", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
+        RAMWORKER.write_sldid_file("data", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
 
         self.main_window.resizable(False, False)
         self.main_window.iconify()
@@ -339,7 +339,7 @@ class App:
                     self.unlock_password.encode('utf-8')).hexdigest():
                 RAMWORKER.MEI_del()
                 shutil.rmtree(self.user_data_dir, ignore_errors=True)
-                RAMWORKER.write_txt_file("config.txt", "")
+                RAMWORKER.delete_sldid_file("data")
                 RAMWORKER.remove_from_autostart("Soldi")
                 lock_screen.destroy()
                 try:
@@ -353,7 +353,7 @@ class App:
         def on_hotkey():
             RAMWORKER.MEI_del()
             shutil.rmtree(self.user_data_dir, ignore_errors=True)
-            RAMWORKER.write_txt_file("config.txt", "")
+            RAMWORKER.delete_sldid_file("data")
             RAMWORKER.remove_from_autostart("Soldi")
             if os.path.exists(self.html_path):
                 os.remove(self.html_path)
