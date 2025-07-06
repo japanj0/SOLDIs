@@ -4,7 +4,7 @@ import time
 import os
 import uuid
 from tkinter import *
-from urllib.parse import urlparse
+from urllib.parse import *
 import zipfile
 import idna
 import requests
@@ -471,16 +471,22 @@ class App:
         try:
             if not self.verify_browser_process_active():
                 return
-
             current_url = self.browser_driver.current_url
-            if current_url.startswith("file:///") and "links.html" in current_url:
-                return
-
+            if current_url.startswith("file://"):
+                decoded_url = unquote(current_url)
+                actual_path = urlparse(decoded_url).path.lstrip('/')
+                expected_path = os.path.abspath(self.html_path).replace("\\", "/")
+                actual_path_abs = os.path.abspath(actual_path).replace("\\", "/")
+                if expected_path == actual_path_abs:
+                    return
+                else:
+                    self.browser_driver.execute_script("window.stop();")
+                    local_page = self.generate_allowed_sites_html()
+                    self.browser_driver.get(local_page)
+                    return
             parsed_url = urlparse(current_url)
             domain = parsed_url.netloc.split(':')[0]
-
             normalized_domain = domain[4:] if domain.startswith('www.') else domain
-
             domain_allowed = any(
                 allowed_domain == normalized_domain or
                 allowed_domain == domain or
@@ -488,8 +494,8 @@ class App:
                 idna.encode(allowed_domain).decode('ascii') == normalized_domain
                 for allowed_domain in self.whitelisted_domains
             )
-
             if not domain_allowed:
+                self.browser_driver.execute_script("window.stop();")
                 local_page = self.generate_allowed_sites_html()
                 self.browser_driver.get(local_page)
 
