@@ -8,7 +8,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 import psutil
 import pygetwindow as gw
-from tkinter import messagebox
+import process_blocker
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
@@ -50,6 +50,18 @@ class App:
         self.launch_controlled_browser()
 
         self.main_window = Tk()
+        local_page = self.generate_allowed_sites_html()
+        self.button_back = Button(self.main_window,
+                                  text="вернутся на главную страницу",
+                                  font=("Arial", 16, "bold"),
+                                  bg="#666666",
+                                  fg="white",
+                                  activebackground="#555555",
+                                  activeforeground="white",
+                                  relief=FLAT,
+                                  bd=0,
+                                  command=lambda: self.browser_driver.get(local_page))
+        self.button_back.pack()
         self.main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
         self.main_window.title("soldi")
         RAMWORKER.write_sldid_file("data", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
@@ -255,6 +267,7 @@ class App:
         self.user_data_dir = f"C:\\Temp\\ChromePythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
         options.add_argument("--remote-debugging-port=9222")
+        options.add_argument("--guest")
         options.add_argument(f"--user-data-dir={self.user_data_dir}")
         options.add_argument("--start-maximized")
         options.add_argument("--no-default-browser-check")
@@ -309,7 +322,7 @@ class App:
                             browser_window.maximize()
             except Exception as e:
                 print(f"Security restriction error: {e}")
-            time.sleep(0.5)
+            time.sleep(0.15)
 
     def terminate_unauthorized_apps(self):
 
@@ -329,101 +342,18 @@ class App:
                     proc.terminate()
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
-
-    def display_security_lock_screen(self):
-        def close_program():
-            self.is_running = False
-            RAMWORKER.clearing_RAM()
-
-            if hashlib.sha256(password_entry.get().encode('utf-8')).hexdigest() == hashlib.sha256(
-                    self.unlock_password.encode('utf-8')).hexdigest():
-                RAMWORKER.MEI_del()
-                shutil.rmtree(self.user_data_dir, ignore_errors=True)
-                RAMWORKER.delete_sldid_file("data")
-                RAMWORKER.remove_from_autostart("Soldi")
-                lock_screen.destroy()
-                try:
-                    if os.path.exists(self.html_path):
-                        os.remove(self.html_path)
-                except Exception:
-                    pass
-                self.main_window.destroy()
-                raise SystemExit(0)
-
-        def on_hotkey():
-            RAMWORKER.MEI_del()
-            shutil.rmtree(self.user_data_dir, ignore_errors=True)
-            RAMWORKER.delete_sldid_file("data")
-            RAMWORKER.remove_from_autostart("Soldi")
-            if os.path.exists(self.html_path):
-                os.remove(self.html_path)
-            self.main_window.destroy()
-            sys.exit()
-
-        lock_screen = Tk()
-        lock_screen.title("soldi")
-        lock_screen.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
-        keyboard.add_hotkey('ctrl+shift+alt+p+q+n', on_hotkey)
-        lock_screen.protocol("WM_DELETE_WINDOW", self.handle_window_close)
-        lock_screen.attributes('-fullscreen', True)
-        lock_screen.configure(bg='#1a1a1a')
-
-        content_frame = Frame(lock_screen, bg='#2d2d2d', bd=0, highlightthickness=0,
-                              relief='flat', padx=40, pady=40)
-        content_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
-
-        warning_label = Label(content_frame,
-                              text="Браузер был закрыт!\nВведите пароль, чтобы выйти.",
-                              font=("Arial", 24, 'bold'),
-                              fg="#ffffff",
-                              bg="#2d2d2d",
-                              justify=CENTER)
-        warning_label.pack(pady=(0, 30))
-
-        password_entry = Entry(content_frame,
-                               font=("Arial", 20),
-                               show="*",
-                               bd=2,
-                               relief=FLAT,
-                               bg="#3d3d3d",
-                               fg="white",
-                               insertbackground="white",
-                               width=25)
-        password_entry.pack(ipady=10, pady=(0, 20))
-
-        submit_button = Button(content_frame,
-                               text="ПОДТВЕРДИТЬ",
-                               font=("Arial", 16, 'bold'),
-                               command=close_program,
-                               bg="#4b6cb7",
-                               fg="white",
-                               activebackground="#3a5a99",
-                               activeforeground="white",
-                               bd=0,
-                               relief=FLAT,
-                               padx=30,
-                               pady=10)
-        submit_button.pack()
-
-        separator = Frame(content_frame, height=2, bg="#4b6cb7", bd=0)
-        separator.pack(fill=X, pady=20)
-
-        lock_screen.mainloop()
-        keyboard.unhook_all()
     def monitor_browser_tabs(self):
 
         while self.is_running:
             try:
                 if not self.verify_browser_process_active():
-                    self.display_security_lock_screen()
-                    continue
-
+                    self.main_window.after(0, lambda: [self.main_window.destroy(), process_blocker.ProcessBlocker(password=hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest())])
                 self.close_unauthorized_tabs()
                 self.browser_driver.switch_to.window(self.browser_driver.window_handles[0])
                 self.validate_current_url()
             except Exception as e:
                 print(f"Browser monitoring error: {e}")
-            time.sleep(0.5)
+            time.sleep(0.15)
 
     def close_unauthorized_tabs(self):
         if self.verify_browser_process_active() and len(self.browser_driver.window_handles) > 1:
