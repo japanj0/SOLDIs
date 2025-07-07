@@ -17,15 +17,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium import webdriver
 import RAMWORKER
-import keyboard
-import sys
 import process_blocker
 import hashlib
-import shutil
 
 
 class App:
     def __init__(self, whitelisted_domains, unlock_password, time):
+        if time!="":
+            self.remaining_time = int(time) * 60
         self.whitelisted_domains = whitelisted_domains
         self.unlock_password = unlock_password
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,6 +32,19 @@ class App:
         self.time = time
         self.initialize_app_state()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
+    def format_time(self, seconds):
+        hours, remainder = divmod(seconds, 3600)
+        mins, secs = divmod(remainder, 60)
+        return f"{hours:02d}:{mins:02d}:{secs:02d}"
+    def update_timer(self):
+        if self.remaining_time > 0:
+            self.remaining_time -= 1
+            time_str = self.format_time(self.remaining_time)
+            self.timer_label.config(fg="black", font=("Arial", 23, "bold"))
+            self.timer_label.config(text=f"До принудительного закрытия осталось:\n{time_str}")
+            self.main_window.after(1000, self.update_timer)
+        else:
+            RAMWORKER.kill_process_by_name("firefox.exe")
 
     def initialize_app_state(self):
         self.browser_lock_mutex = None
@@ -51,19 +63,7 @@ class App:
         self.local_page_url = self.generate_allowed_sites_html()
 
         self.launch_controlled_browser()
-        local_page = self.generate_allowed_sites_html()
         self.main_window = Tk()
-        self.button_back = Button(self.main_window,
-                                  text="вернутся на главную страницу",
-                                  font=("Arial", 16, "bold"),
-                                  bg="#666666",
-                                  fg="white",
-                                  activebackground="#555555",
-                                  activeforeground="white",
-                                  relief=FLAT,
-                                  bd=0,
-                                  command=lambda: self.browser_driver.get(local_page))
-        self.button_back.pack()
         self.main_window.title("soldi")
         self.main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
         RAMWORKER.write_sldid_file("data", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
@@ -75,7 +75,25 @@ class App:
         threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
         threading.Thread(target=self.enforce_security_restrictions, daemon=True).start()
         if self.time != "":
-            self.main_window.after(int(self.time) * 60000, lambda: RAMWORKER.kill_process_by_name("firefox.exe"))
+            self.timer_label = Label(self.main_window,
+                                     text=self.format_time(self.remaining_time),
+                                     font=("Arial", 20, "bold"),
+                                     fg="green")
+            self.timer_label.pack()
+            self.update_timer()
+
+        local_page = self.generate_allowed_sites_html()
+        self.button_back = Button(self.main_window,
+                                  text="вернутся на главную страницу",
+                                  font=("Arial", 20, "bold"),
+                                  bg="#666666",
+                                  fg="white",
+                                  activebackground="#555555",
+                                  activeforeground="white",
+                                  relief=FLAT,
+                                  bd=0,
+                                  command=lambda: self.browser_driver.get(local_page))
+        self.button_back.pack()
         self.main_window.mainloop()
 
     def create_browser_lock_mutex(self):
