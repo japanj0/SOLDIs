@@ -304,6 +304,7 @@ class App:
             self.browser_driver = webdriver.Chrome(options=options)
 
             RAMWORKER.add_to_autostart("Soldi")
+
             self.browser_driver.implicitly_wait(3)
             WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
             self.browser_driver.get(self.local_page_url)

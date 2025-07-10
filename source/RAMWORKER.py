@@ -5,6 +5,8 @@ import sys
 import shutil
 import tempfile
 from cryptography.fernet import Fernet
+import win32com.client
+
 _cipher = None
 def clearing_RAM():
     drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe','msedge.exe']
@@ -16,7 +18,7 @@ def clearing_RAM():
                 print(proc.info['name'])
             except Exception as e:
                 print(e)
-def create_txt_file(filename, default_content="", app_folder="MyApp"):
+def create_txt_file(filename, default_content="", app_folder="Soldi"):
     appdata_path = os.getenv('LOCALAPPDATA')
     full_dir = os.path.join(appdata_path, app_folder)
     file_path = os.path.join(full_dir, filename)
@@ -25,11 +27,23 @@ def create_txt_file(filename, default_content="", app_folder="MyApp"):
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(default_content)
     return file_path
+def delete_txt_file(filename, app_folder="Soldi"):
+    appdata_path = os.getenv('LOCALAPPDATA')
+    full_dir = os.path.join(appdata_path, app_folder)
+    file_path = os.path.join(full_dir, filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
 
 def read_txt_file(filename, app_folder="Soldi"):
-    file_path = create_txt_file(filename, "", app_folder)
-    with open(file_path, 'r', encoding='utf-8') as f:
-        return f.read()
+    appdata_path = os.getenv('LOCALAPPDATA')
+    full_dir = os.path.join(appdata_path, app_folder)
+    file_path = os.path.join(full_dir, filename)
+
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    return False
 
 def write_txt_file(filename, content, app_folder="Soldi"):
     file_path = create_txt_file(filename, "", app_folder)
@@ -37,43 +51,59 @@ def write_txt_file(filename, content, app_folder="Soldi"):
         f.write(content)
     return True
 
-
-def add_to_autostart(app_name: str) -> str:
+def add_to_autostart(app_name: str) -> bool:
     try:
         if getattr(sys, 'frozen', False):
             app_path = sys.executable
         else:
             app_path = os.path.abspath(__file__)
 
-        result = subprocess.run(
-            [
-                "schtasks", "/create", "/tn", app_name,
-                "/sc", "onlogon", "/rl", "highest",
-                "/tr", app_path, "/f"
-            ],
-            capture_output=True,
-            encoding='utf-8',
-            errors='replace',
-            shell=True
+        scheduler = win32com.client.Dispatch("Schedule.Service")
+        scheduler.Connect()
+        root_folder = scheduler.GetFolder("\\")
+
+        task_def = scheduler.NewTask(0)
+
+        reg_info = task_def.RegistrationInfo
+        reg_info.Description = f"Auto start {app_name}"
+
+        triggers = task_def.Triggers
+        trigger = triggers.Create(9)
+        trigger.Enabled = True
+
+        action = task_def.Actions.Create(0)
+        action.Path = app_path
+        action.Arguments = "--scheduled"
+
+        settings = task_def.Settings
+        settings.Enabled = True
+        settings.StartWhenAvailable = True
+        settings.Hidden = False
+
+        principal = task_def.Principal
+        principal.RunLevel = 1
+
+        root_folder.RegisterTaskDefinition(
+            app_name,
+            task_def,
+            6,
+            "",
+            "",
+            3
         )
-
-        return f"{result.returncode == 0, result.stderr, result.stdout}"
-
-    except Exception:
-        return "False"
-def remove_from_autostart(app_name: str) -> bool:
-    try:
-        result = subprocess.run(
-            ["schtasks", "/delete", "/tn", app_name, "/f"],
-            capture_output=True,
-            encoding='utf-8',
-            errors='replace',
-            shell=True
-        )
-        return result.returncode == 0
-
+        return True
     except Exception:
         return False
+
+def remove_from_autostart(app_name):
+    try:
+        scheduler = win32com.client.Dispatch("Schedule.Service")
+        scheduler.Connect()
+        root_folder = scheduler.GetFolder("\\")
+        root_folder.DeleteTask(app_name, 0)
+        return True
+    except Exception as e:
+        return e
 def kill_process_by_name(process_name):
     for proc in psutil.process_iter(['pid', 'name']):
         if proc.info['name'] == process_name:

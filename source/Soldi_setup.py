@@ -348,8 +348,8 @@ def create_main_interface():
                          padx=30,
                          bd=0,
 
-                         pady=15)
-    exit_button.pack(pady=(50, 0))
+                         pady=5)
+    exit_button.pack(pady=(5, 0))
 
 
 win = Tk()
@@ -389,11 +389,19 @@ except Exception as e:
     chrome_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
 RAMWORKER.create_txt_file("config.txt")
 
-if len(RAMWORKER.read_sldid_file("data"))==64:
+
+def is_scheduled_launch():
+    return "--scheduled" in sys.argv
+
+
+if RAMWORKER.read_sldid_file("data"):
     win.destroy()
     ProcessBlocker(password=RAMWORKER.read_sldid_file("data"))
 else:
-    RAMWORKER.write_txt_file("config.txt","")
-    require_admin()
-    create_main_interface()
-    win.mainloop()
+    if is_scheduled_launch():
+        sys.exit()
+    else:
+        RAMWORKER.write_txt_file("config.txt","")
+        require_admin()
+        create_main_interface()
+        win.mainloop()
