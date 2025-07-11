@@ -49,7 +49,6 @@ class ProcessBlocker:
         RAMWORKER.delete_txt_file("Flag.txt")
         RAMWORKER.MEI_del()
         RAMWORKER.delete_sldid_file("data")
-        RAMWORKER.remove_from_autostart("Soldi")
         self.cleanup()
         self.root.destroy()
         sys.exit()

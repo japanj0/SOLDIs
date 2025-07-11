@@ -265,9 +265,10 @@ def create_main_interface():
             confirm_button.destroy()
             time_entry.destroy()
             info_lab.config(text="")
-            button_firefox.grid(row=1, column=0, padx=30, pady=20, sticky="nsew")
-            button_edge.grid(row=1, column=1, padx=30, pady=20, sticky="nsew")
-            button_chrome.grid(row=1, column=2, padx=30, pady=20, sticky="nsew")
+            buttons_frame.pack(fill=BOTH, expand=True, pady=50)
+            button_firefox.grid(row=0, column=0, padx=30, pady=20, sticky="nsew")
+            button_edge.grid(row=0, column=1, padx=30, pady=20, sticky="nsew")
+            button_chrome.grid(row=0, column=2, padx=30, pady=20, sticky="nsew")
 
 
     clear_window()
