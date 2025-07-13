@@ -343,7 +343,7 @@ class App:
                             browser_window.maximize()
             except Exception as e:
                 print(f"Security restriction error: {e}")
-            time.sleep(0.15)
+            time.sleep(0.3)
 
     def terminate_unauthorized_apps(self):
 
@@ -378,7 +378,7 @@ class App:
                 self.validate_current_url()
             except Exception as e:
                 print(f"Browser monitoring error: {e}")
-            time.sleep(0.15)
+            time.sleep(0.3)
 
     def close_unauthorized_tabs(self):
         if self.verify_browser_process_active() and len(self.browser_driver.window_handles) > 1:
@@ -441,6 +441,7 @@ def main():
     main_window.title("soldi")
     main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
     whitelisted_domains = []
+    switch_info = False
     unlock_password = ""
 
     main_window.configure(bg='#f0f2f5')
@@ -534,8 +535,9 @@ def main():
             bad_label.pack()
             main_window.after(2000, des_and_conf)
 
-    def prompt_for_password_setup():
-        if not whitelisted_domains:
+    def prompt_for_password_setup(flag=False):
+        nonlocal switch_info
+        if not whitelisted_domains and not flag:
             ctypes.windll.user32.MessageBoxW(
                 0,
                 "Вы не ввели ссылки для посещения",
@@ -543,6 +545,9 @@ def main():
                 0x0000 | 0x0010 | 0x1000
             )
         else:
+            if flag:
+                switch_info = True
+            session_button.destroy()
             confirm_button.destroy()
             next_button.config(text="УСТАНОВИТЬ ПАРОЛЬ",
                                command=set_unlock_password,
@@ -555,10 +560,26 @@ def main():
             next_button.pack(pady=(20, 10))
             domain_label.config(font=("Arial", 16, 'bold'))
 
+    def write_session(whitelist):
+        RAMWORKER.write_sldid_file("session", " ".join(whitelist))
+
+    def restore_session():
+        if RAMWORKER.read_sldid_file("session") == "":
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                "Файл сессии не найден",
+                "Ошибка",
+                0x0000 | 0x0010 | 0x1000
+            )
+        else:
+            prompt_for_password_setup(True)
+
     def set_unlock_password():
+        nonlocal whitelisted_domains, unlock_password
+        if switch_info:
+            whitelisted_domains = RAMWORKER.read_sldid_file("session").split()
         time = RAMWORKER.read_txt_file("config.txt")
         RAMWORKER.write_txt_file("config.txt", "")
-        nonlocal unlock_password
         unlock_password = domain_entry.get()
         if not unlock_password:
             ctypes.windll.user32.MessageBoxW(
@@ -569,6 +590,7 @@ def main():
             )
         else:
             main_window.destroy()
+            write_session(whitelisted_domains)
             App(whitelisted_domains, unlock_password, time)
 
     confirm_button = Button(buttons_frame,
@@ -584,6 +606,20 @@ def main():
                             padx=20,
                             pady=10)
     confirm_button.pack(pady=(0, 15), fill=X)
+
+    session_button = Button(buttons_frame,
+                        text="ВОССТАНОВИТЬ СЕССИЮ",
+                        font=("Arial", 14, 'bold'),
+                        bg="#9C27B0",
+                        fg="white",
+                        activebackground="#7B1FA2",
+                        activeforeground="white",
+                        bd=0,
+                        command=restore_session,
+                        relief=FLAT,
+                        padx=20,
+                        pady=10)
+    session_button.pack(pady=(0, 15), fill=X)
 
     next_button = Button(buttons_frame,
                          text="ЗАВЕРШИТЬ ВВОД",
