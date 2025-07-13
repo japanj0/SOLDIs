@@ -47,6 +47,7 @@ class ProcessBlocker:
 
     def emergency_exit(self):
         RAMWORKER.delete_txt_file("Flag.txt")
+        RAMWORKER.clearing_RAM()
         RAMWORKER.MEI_del()
         RAMWORKER.delete_sldid_file("data")
         self.cleanup()
@@ -109,6 +110,7 @@ class ProcessBlocker:
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
             RAMWORKER.MEI_del()
             RAMWORKER.delete_txt_file("Flag.txt")
+            RAMWORKER.clearing_RAM()
             RAMWORKER.delete_sldid_file("data")
             self.cleanup()
             self.running = False
