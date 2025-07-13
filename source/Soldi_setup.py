@@ -10,9 +10,7 @@ import tempfile
 import atexit
 import ctypes
 import subprocess
-import Edge_control
-import Firefox_control
-import Chrome_control
+import UnitedBrowsersModul
 import shutil
 import psutil
 import threading
@@ -176,7 +174,7 @@ def Edge():
                 creationflags=subprocess.CREATE_NO_WINDOW,
                 shell=True
             )
-            win.after(0, lambda: [win.destroy(), Edge_control.main()])
+            win.after(0, lambda: [win.destroy(), UnitedBrowsersModul.main("edge")])
         except FileNotFoundError:
             win.after(0, lambda: show_error(f"Edge не установлен на вашем ПК"))
         except Exception:
@@ -195,7 +193,7 @@ def Firefox():
             for proc in psutil.process_iter(['pid', 'name']):
                 if proc.info['name'] == "firefox.exe":
                         proc.kill()
-            win.after(0, lambda: [win.destroy(), Firefox_control.main()])
+            win.after(0, lambda: [win.destroy(), UnitedBrowsersModul.main("firefox")])
         except FileNotFoundError :
             win.after(0, lambda: show_error(f"Firefox не установлен на вашем ПК"))
         except Exception:
@@ -216,7 +214,7 @@ def Chrome():
                     creationflags=subprocess.CREATE_NO_WINDOW,
                     shell=True
                 )
-                win.after(0, lambda: [win.destroy(), Chrome_control.main()])
+                win.after(0, lambda: [win.destroy(), UnitedBrowsersModul.main("chrome")])
         except FileNotFoundError:
                 win.after(0, lambda: show_error(f"Chrome не установлен на вашем ПК"))
         except Exception:

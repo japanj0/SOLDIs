@@ -4,30 +4,35 @@ import time
 import os
 import uuid
 from tkinter import *
-from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import WebDriverException
 import psutil
 import pygetwindow as gw
 import process_blocker
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium import webdriver
 import RAMWORKER
 from urllib.parse import *
 import idna
 import hashlib
+import zipfile
+import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.firefox.service import Service as FirefoxService
 
 
 class App:
-    def __init__(self, whitelisted_domains, unlock_password, time):
-        if time!="":
+    def __init__(self, whitelisted_domains, unlock_password, time, browser_type):
+        if time != "":
             self.remaining_time = int(time) * 60
         self.whitelisted_domains = whitelisted_domains
         self.unlock_password = unlock_password
-
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.html_path = os.path.join(self.script_dir, "links.html")
         self.time = time
+        self.browser_type = browser_type
         self.initialize_app_state()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
@@ -44,7 +49,12 @@ class App:
             self.timer_label.config(text=f"До принудительного закрытия осталось:\n{time_str}")
             self.main_window.after(1000, self.update_timer)
         else:
-            RAMWORKER.kill_process_by_name("chrome.exe")
+            process = {
+                "chrome": "chrome.exe",
+                "edge": "msedge.exe",
+                "firefox": "firefox.exe"
+            }[self.browser_type]
+            RAMWORKER.kill_process_by_name(process)
 
     def initialize_app_state(self):
         self.browser_lock_mutex = None
@@ -56,33 +66,25 @@ class App:
     def setup_browser_environment(self):
         if self.check_browser_process_running():
             return
-
         self.browser_lock_mutex = self.create_browser_lock_mutex()
         if not self.browser_lock_mutex:
             return
         self.local_page_url = self.generate_allowed_sites_html()
-
         self.launch_controlled_browser()
-
         self.main_window = Tk()
-
-        self.main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
         self.main_window.title("soldi")
+        self.main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
         RAMWORKER.write_sldid_file("data", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
-
         self.main_window.resizable(False, False)
         self.main_window.iconify()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
-
         threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
         threading.Thread(target=self.enforce_security_restrictions, daemon=True).start()
         if self.time != "":
-            self.timer_label = Label(self.main_window,
-                                     text=self.format_time(self.remaining_time),
-                                     font=("Arial", 20, "bold"))
-            self.timer_label.pack()
+            self.timer_label = Label(self.main_window, text=self.format_time(self.remaining_time),
+                                     font=("Arial", 20, "bold"), fg="green")
+            self.timer_label.pack(pady=10)
             self.update_timer()
-        local_page = self.generate_allowed_sites_html()
         self.button_back = Button(self.main_window,
                                   text="вернутся на главную страницу",
                                   font=("Arial", 20, "bold"),
@@ -92,12 +94,17 @@ class App:
                                   activeforeground="white",
                                   relief=FLAT,
                                   bd=0,
-                                  command=lambda: self.browser_driver.get(local_page))
+                                  command=lambda: self.browser_driver.get(self.local_page_url))
         self.button_back.pack()
         self.main_window.mainloop()
 
     def create_browser_lock_mutex(self):
-        mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\ChromeBrowserLock")
+        mutex_name = {
+            "chrome": "Global\\ChromeBrowserLock",
+            "edge": "Global\\EdgeBrowserLock",
+            "firefox": "Global\\FirefoxBrowserLock"
+        }[self.browser_type]
+        mutex = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
         if not mutex:
             return None
         return mutex
@@ -105,13 +112,13 @@ class App:
     def handle_window_close(self):
         pass
 
-    def release_browser_lock_mutex(self):
-        if self.browser_lock_mutex:
-            ctypes.windll.kernel32.CloseHandle(self.browser_lock_mutex)
-            self.browser_lock_mutex = None
-
     def check_browser_process_running(self):
-        mutex = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, "Global\\ChromeBrowserLock")
+        mutex_name = {
+            "chrome": "Global\\ChromeBrowserLock",
+            "edge": "Global\\EdgeBrowserLock",
+            "firefox": "Global\\FirefoxBrowserLock"
+        }[self.browser_type]
+        mutex = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, mutex_name)
         if mutex:
             ctypes.windll.kernel32.CloseHandle(mutex)
             return True
@@ -119,8 +126,7 @@ class App:
 
     def generate_allowed_sites_html(self):
         with open(self.html_path, "w", encoding="utf-8") as f:
-            f.write("""
-    <!DOCTYPE html>
+            f.write("""<!DOCTYPE html>
     <html lang="ru">
     <head>
         <meta charset="UTF-8">
@@ -256,66 +262,113 @@ class App:
         <div class="container">
             <h1>Разрешённые сайты</h1>
             <p class="description">Вы можете посещать только эти веб-сайты. Нажмите на ссылку, чтобы перейти.</p>
-
             <ul class="site-list">
     """)
             for site in self.whitelisted_domains:
                 f.write(
                     f'            <li class="site-item"><a href="https://{site}" target="_self" class="site-link">{site}</a></li>\n')
             f.write("""        </ul>
-
             <div class="footer">
                 <p>Для выхода из программы закройте браузер и введите пароль администратора</p>
             </div>
         </div>
     </body>
-    </html>
-    """)
-
+    </html>""")
         return "file:///" + self.html_path.replace("\\", "/")
 
     def launch_controlled_browser(self):
         if self.browser_driver is not None:
             try:
                 self.browser_driver.quit()
-            except Exception as e:
+            except:
                 pass
-            self.browser_driver = None
-
-        options = Options()
-        options.page_load_strategy = "none"
-        self.user_data_dir = f"C:\\Temp\\ChromePythonProfile_{uuid.uuid4()}"
+        self.user_data_dir = f"C:\\Temp\\{self.browser_type.capitalize()}PythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
-        options.add_argument("--remote-debugging-port=9222")
-        options.add_argument("--guest")
-        options.add_argument(f"--user-data-dir={self.user_data_dir}")
-        options.add_argument("--start-maximized")
-        options.add_argument("--no-default-browser-check")
-        options.add_argument("--no-first-run")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-popup-blocking")
-        options.add_argument("--disable-default-apps")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--disable-session-crashed-bubble")
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option('useAutomationExtension', False)
-
-        try:
+        if self.browser_type == "chrome":
+            options = ChromeOptions()
+            options.page_load_strategy = "none"
+            options.add_argument("--remote-debugging-port=9222")
+            options.add_argument("--guest")
+            options.add_argument(f"--user-data-dir={self.user_data_dir}")
+            options.add_argument("--start-maximized")
+            options.add_argument("--no-default-browser-check")
+            options.add_argument("--no-first-run")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--disable-popup-blocking")
+            options.add_argument("--disable-default-apps")
+            options.add_argument("--disable-infobars")
+            options.add_argument("--disable-session-crashed-bubble")
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option('useAutomationExtension', False)
             self.browser_driver = webdriver.Chrome(options=options)
+        elif self.browser_type == "edge":
+            options = EdgeOptions()
+            options.page_load_strategy = "none"
+            options.add_argument("--remote-debugging-port=9222")
+            options.add_argument(f"--user-data-dir={self.user_data_dir}")
+            options.add_argument("--start-maximized")
+            options.add_argument("--no-first-run")
+            options.add_argument("--no-remote")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--ignore-certificate-errors")
+            options.add_argument("--disable-infobars")
+            options.add_argument("--guest")
+            options.add_argument("--disable-notifications")
+            options.add_argument("--disable-sync")
+            options.add_argument("--disable-cloud-import")
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option('useAutomationExtension', False)
+            options.add_argument("--app-name=cara")
+            self.browser_driver = webdriver.Edge(options=options)
+        elif self.browser_type == "firefox":
+            def get_latest_geckodriver_url():
+                response = requests.get("https://api.github.com/repos/mozilla/geckodriver/releases/latest")
+                response.raise_for_status()
+                assets = response.json()["assets"]
+                for asset in assets:
+                    if "win64.zip" in asset["name"]:
+                        return asset["browser_download_url"]
+                raise Exception("win64.zip не найден")
 
-            RAMWORKER.add_to_autostart("Soldi")
+            def setup_geckodriver():
+                temp_dir = os.path.join(os.environ["TEMP"], "geckodriver")
+                os.makedirs(temp_dir, exist_ok=True)
+                driver_path = os.path.join(temp_dir, "geckodriver.exe")
+                if os.path.exists(driver_path):
+                    return driver_path
+                download_url = get_latest_geckodriver_url()
+                zip_path = os.path.join(temp_dir, "geckodriver.zip")
+                with requests.get(download_url, stream=True) as r:
+                    r.raise_for_status()
+                    with open(zip_path, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extract("geckodriver.exe", temp_dir)
+                os.remove(zip_path)
+                return driver_path
 
-            self.browser_driver.implicitly_wait(3)
-            WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
-            self.browser_driver.get(self.local_page_url)
-            self.browser_driver.implicitly_wait(1)
-            self.browser_driver.maximize_window()
-            self.browser_driver.execute_script("document.title = 'chromegi';")
-
-            self.browser_state = 2
-        except Exception as e:
-            print(e)
-            # self.browser_driver = None
+            path = setup_geckodriver()
+            options = FirefoxOptions()
+            options.page_load_strategy = "none"
+            options.set_preference("remote-debugging-port", 9222)
+            options.add_argument(f"--user-data-dir={self.user_data_dir}")
+            options.add_argument("--start-maximized")
+            options.add_argument("--no-remote")
+            options.add_argument("--new-instance")
+            options.add_argument("--ignore-certificate-errors")
+            options.set_preference("app.update.auto", False)
+            options.set_preference("app.update.enabled", False)
+            service = FirefoxService(executable_path=path)
+            self.browser_driver = webdriver.Firefox(options=options, service=service)
+        self.browser_driver.implicitly_wait(3)
+        WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
+        self.browser_driver.get(self.local_page_url)
+        self.browser_driver.implicitly_wait(1)
+        self.browser_driver.maximize_window()
+        self.browser_driver.execute_script(f"document.title = '{self.browser_type}gi';")
+        RAMWORKER.add_to_autostart("Soldi")
 
     def verify_browser_process_active(self):
         if self.browser_driver is None:
@@ -327,53 +380,54 @@ class App:
             return False
 
     def enforce_security_restrictions(self):
-
         while self.is_running:
             try:
                 self.terminate_unauthorized_apps()
-                self.terminate_unauthorized_chrome_instances()
-
+                self.terminate_unauthorized_instances()
                 if self.verify_browser_process_active():
-                    browser_window = gw.getWindowsWithTitle("chromegi")
+                    title = f"{self.browser_type}gi"
+                    browser_window = gw.getWindowsWithTitle(title)
                     if browser_window:
                         browser_window = browser_window[0]
                         if browser_window.isMinimized:
                             browser_window.restore()
                         if not browser_window.isMaximized:
                             browser_window.maximize()
-            except Exception as e:
-                print(f"Security restriction error: {e}")
+            except:
+                pass
             time.sleep(0.3)
 
     def terminate_unauthorized_apps(self):
-
-        forbidden_apps = ["msedge.exe", "firefox.exe", "opera.exe", "roblox.exe",
-                          "minecraft.exe", "yandex.exe", "tlauncher.exe",
-                          "browser.exe", "rulauncher.exe", "java.exe", "opera.exe", "yandex.exe", "iexplore.exe",
-                          "taskmgr.exe", "powershell.exe",
-                          "regedit.exe", "mmc.exe", "control.exe",
-                          "roblox.exe", "minecraft.exe", "tlauncher.exe",
-                          "rulauncher.exe", "javaw.exe", "java.exe",
-                          "discord.exe", "steam.exe", "epicgameslauncher.exe",
-                          "battle.net.exe", "telegram.exe", "viber.exe", "browser.exe","cmd.exe","powershell.exe"]
-
+        forbidden = ["chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
+                     "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
+                     "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
+                     "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
+                     "viber.exe", "cmd.exe"]
+        current = {
+            "chrome": "chrome.exe",
+            "edge": "msedge.exe",
+            "firefox": "firefox.exe"
+        }[self.browser_type]
         for proc in psutil.process_iter(['pid', 'name']):
             try:
-                if proc.info['name'].lower() in forbidden_apps:
+                name = proc.info['name'].lower()
+                if name in forbidden and name != current:
                     proc.terminate()
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            except:
                 continue
-    def monitor_browser_tabs(self):
 
+    def monitor_browser_tabs(self):
         while self.is_running:
             try:
                 if not self.verify_browser_process_active():
-                    self.main_window.after(0, lambda: [self.main_window.destroy(), process_blocker.ProcessBlocker(password=hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest())])
+                    self.main_window.after(0, lambda: [self.main_window.destroy(),
+                                                       process_blocker.ProcessBlocker(password=hashlib.sha256(
+                                                           self.unlock_password.encode('utf-8')).hexdigest())])
                 self.close_unauthorized_tabs()
                 self.browser_driver.switch_to.window(self.browser_driver.window_handles[0])
                 self.validate_current_url()
-            except Exception as e:
-                print(f"Browser monitoring error: {e}")
+            except:
+                pass
             time.sleep(0.3)
 
     def close_unauthorized_tabs(self):
@@ -382,7 +436,7 @@ class App:
                 try:
                     self.browser_driver.switch_to.window(handle)
                     self.browser_driver.execute_script("window.close();")
-                except Exception:
+                except:
                     pass
 
     def validate_current_url(self):
@@ -399,8 +453,7 @@ class App:
                     return
                 else:
                     self.browser_driver.execute_script("window.stop();")
-                    local_page = self.generate_allowed_sites_html()
-                    self.browser_driver.get(local_page)
+                    self.browser_driver.get(self.local_page_url)
                     return
             parsed_url = urlparse(current_url)
             domain = parsed_url.netloc.split(':')[0]
@@ -414,24 +467,45 @@ class App:
             )
             if not domain_allowed:
                 self.browser_driver.execute_script("window.stop();")
-                local_page = self.generate_allowed_sites_html()
-                self.browser_driver.get(local_page)
-
-        except WebDriverException as e:
+                self.browser_driver.get(self.local_page_url)
+        except:
             self.browser_driver = None
 
-    def terminate_unauthorized_chrome_instances(self):
-        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+    def terminate_unauthorized_instances(self):
+        if self.browser_type == "firefox":
             try:
-                if "chrome.exe" in proc.info['name'].lower():
-                    cmdline = proc.info['cmdline']
-                    if cmdline and any("--user-data-dir=C:\\Temp\\ChromePythonProfile" in arg for arg in cmdline):
-                        pass
-                    else:
-                        proc.terminate()
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                continue
-def main():
+                controlled_pids = set()
+                if self.browser_driver:
+                    pid = self.browser_driver.service.process.pid
+                    controlled_pids.add(pid)
+                    for child in psutil.Process(pid).children(recursive=True):
+                        controlled_pids.add(child.pid)
+                for proc in psutil.process_iter(['pid', 'name']):
+                    try:
+                        if proc.info['name'].lower() == 'firefox.exe' and proc.info['pid'] not in controlled_pids:
+                            proc.terminate()
+                    except:
+                        continue
+            except:
+                pass
+        else:
+            binary = {
+                "chrome": "chrome.exe",
+                "edge": "msedge.exe"
+            }[self.browser_type]
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    if binary in proc.info['name'].lower():
+                        cmdline = proc.info['cmdline']
+                        if cmdline and any(self.user_data_dir in arg for arg in cmdline):
+                            pass
+                        else:
+                            proc.terminate()
+                except:
+                    continue
+
+
+def main(browser_type):
     main_window = Tk()
     main_window.title("soldi")
     main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
@@ -441,11 +515,10 @@ def main():
 
     main_window.configure(bg='#f0f2f5')
 
-    container = Frame(main_window, bg='#ffffff', padx=40, pady=40, bd=0,
-                      highlightthickness=0, relief='flat')
+    container = Frame(main_window, bg='#ffffff', padx=40, pady=40)
     container.place(relx=0.5, rely=0.5, anchor=CENTER)
 
-    header_frame = Frame(container, bg='#ffffff', bd=0)
+    header_frame = Frame(container, bg='#ffffff')
     header_frame.pack(pady=(0, 30))
 
     domain_label = Label(header_frame,
@@ -455,7 +528,7 @@ def main():
                          bg="#ffffff")
     domain_label.pack()
 
-    input_frame = Frame(container, bg='#ffffff', bd=0)
+    input_frame = Frame(container, bg='#ffffff')
     input_frame.pack(pady=(0, 30))
 
     domain_entry = Entry(input_frame,
@@ -470,12 +543,12 @@ def main():
                          highlightbackground="black")
     domain_entry.pack(ipady=8, padx=10)
 
-    buttons_frame = Frame(container, bg='#ffffff', bd=0)
+    buttons_frame = Frame(container, bg='#ffffff')
     buttons_frame.pack()
 
     def validate_domain_trustworthiness(url):
         trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф',
-                        'me'}
+                        'me','mit'}
         parts = url.strip().split('.')
         if len(parts) < 2 or not parts[-2]:
             return False
@@ -495,7 +568,6 @@ def main():
             domain = domain.split('://')[1]
 
         domain = domain.split('/')[0]
-
         normalized_domain = domain[4:] if domain.startswith('www.') else domain
 
         if validate_domain_trustworthiness(normalized_domain):
@@ -533,12 +605,7 @@ def main():
     def prompt_for_password_setup(flag=False):
         nonlocal switch_info
         if not whitelisted_domains and not flag:
-            ctypes.windll.user32.MessageBoxW(
-                0,
-                "Вы не ввели ссылки для посещения",
-                "Ошибка",
-                0x0000 | 0x0010 | 0x1000
-            )
+            ctypes.windll.user32.MessageBoxW(0, "Вы не ввели ссылки для посещения", "Ошибка", 0x0000 | 0x0010 | 0x1000)
         else:
             if flag:
                 switch_info = True
@@ -553,19 +620,13 @@ def main():
                                activeforeground="white")
             domain_label.config(text="Придумайте надёжный пароль\nдля отключения программы")
             next_button.pack(pady=(20, 10))
-            domain_label.config(font=("Arial", 16, 'bold'))
 
     def write_session(whitelist):
         RAMWORKER.write_sldid_file("session", " ".join(whitelist))
 
     def restore_session():
         if RAMWORKER.read_sldid_file("session") == "":
-            ctypes.windll.user32.MessageBoxW(
-                0,
-                "Файл сессии не найден",
-                "Ошибка",
-                0x0000 | 0x0010 | 0x1000
-            )
+            ctypes.windll.user32.MessageBoxW(0, "Файл сессии не найден", "Ошибка", 0x0000 | 0x0010 | 0x1000)
         else:
             prompt_for_password_setup(True)
 
@@ -573,20 +634,15 @@ def main():
         nonlocal whitelisted_domains, unlock_password
         if switch_info:
             whitelisted_domains = RAMWORKER.read_sldid_file("session").split()
-        time = RAMWORKER.read_txt_file("config.txt")
+        time_limit = RAMWORKER.read_txt_file("config.txt")
         RAMWORKER.write_txt_file("config.txt", "")
         unlock_password = domain_entry.get()
         if not unlock_password:
-            ctypes.windll.user32.MessageBoxW(
-                0,
-                "Вы не ввели пароль",
-                "Ошибка",
-                0x0000 | 0x0010 | 0x1000
-            )
+            ctypes.windll.user32.MessageBoxW(0, "Вы не ввели пароль", "Ошибка", 0x0000 | 0x0010 | 0x1000)
         else:
             main_window.destroy()
             write_session(whitelisted_domains)
-            App(whitelisted_domains, unlock_password, time)
+            App(whitelisted_domains, unlock_password, time_limit, browser_type)
 
     confirm_button = Button(buttons_frame,
                             text="ДОБАВИТЬ ССЫЛКУ",
@@ -601,21 +657,19 @@ def main():
                             padx=20,
                             pady=10)
     confirm_button.pack(pady=(0, 15), fill=X)
-
     session_button = Button(buttons_frame,
-                        text="ВОССТАНОВИТЬ СЕССИЮ",
-                        font=("Arial", 14, 'bold'),
-                        bg="#9C27B0",
-                        fg="white",
-                        activebackground="#7B1FA2",
-                        activeforeground="white",
-                        bd=0,
-                        command=restore_session,
-                        relief=FLAT,
-                        padx=20,
-                        pady=10)
+                            text="ВОССТАНОВИТЬ СЕССИЮ",
+                            font=("Arial", 14, 'bold'),
+                            bg="#9C27B0",
+                            fg="white",
+                            activebackground="#7B1FA2",
+                            activeforeground="white",
+                            bd=0,
+                            command=restore_session,
+                            relief=FLAT,
+                            padx=20,
+                            pady=10)
     session_button.pack(pady=(0, 15), fill=X)
-
     next_button = Button(buttons_frame,
                          text="ЗАВЕРШИТЬ ВВОД",
                          font=("Arial", 14, 'bold'),
@@ -629,7 +683,6 @@ def main():
                          padx=20,
                          pady=10)
     next_button.pack(pady=(0, 15), fill=X)
-
     exit_button = Button(buttons_frame,
                          text="ЗАКРЫТЬ ПРИЛОЖЕНИЕ",
                          font=("Arial", 14, 'bold'),
@@ -643,16 +696,13 @@ def main():
                          padx=20,
                          pady=10)
     exit_button.pack(fill=X)
-
     separator = Frame(container, height=2, bg="#e0e0e0", bd=0)
     separator.pack(fill=X, pady=20)
-
     footer_label = Label(container,
                          text="Контроль доступа в интернет",
                          font=("Arial", 10),
                          fg="#757575",
                          bg="#ffffff")
     footer_label.pack()
-
     main_window.attributes('-fullscreen', True)
     main_window.mainloop()
