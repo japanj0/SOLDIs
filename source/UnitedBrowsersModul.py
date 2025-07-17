@@ -24,13 +24,16 @@ from selenium.webdriver.firefox.service import Service as FirefoxService
 
 
 class App:
-    def __init__(self, whitelisted_domains, unlock_password, time, browser_type):
+    def __init__(self, whitelisted_domains, unlock_password, time, browser_type, flag):
         if time != "":
             self.remaining_time = int(time) * 60
+        self.flag = flag
         self.whitelisted_domains = whitelisted_domains
         self.unlock_password = unlock_password
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.html_path = os.path.join(self.script_dir, "links.html")
+        self.main_window = Tk()
+        self.main_window.withdraw()
         self.time = time
         self.browser_type = browser_type
         self.initialize_app_state()
@@ -59,7 +62,6 @@ class App:
     def initialize_app_state(self):
         self.browser_lock_mutex = None
         self.browser_driver = None
-        self.main_window = None
         self.is_running = True
         self.setup_browser_environment()
 
@@ -74,12 +76,13 @@ class App:
         self.main_window = Tk()
         self.main_window.title("soldi")
         self.main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
-        RAMWORKER.write_sldid_file("data", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
+        if not self.flag:
+            RAMWORKER.write_sldid_file("data", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
         self.main_window.resizable(False, False)
         self.main_window.iconify()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
-        threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
-        threading.Thread(target=self.enforce_security_restrictions, daemon=True).start()
+        self.first_thread = threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
+        self.second_thread = threading.Thread(target=self.enforce_security_restrictions, daemon=True).start()
         if self.time != "":
             self.timer_label = Label(self.main_window, text=self.format_time(self.remaining_time),
                                      font=("Arial", 20, "bold"), fg="green")
@@ -104,23 +107,23 @@ class App:
             "edge": "Global\\EdgeBrowserLock",
             "firefox": "Global\\FirefoxBrowserLock"
         }[self.browser_type]
-        mutex = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
-        if not mutex:
+        self.mutex2 = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+        if not self.mutex2:
             return None
-        return mutex
+        return self.mutex2
 
     def handle_window_close(self):
         pass
 
     def check_browser_process_running(self):
         mutex_name = {
-            "chrome": "Global\\ChromeBrowserLock",
+            "chrome": f"Global\\ChromeBrowserLock",
             "edge": "Global\\EdgeBrowserLock",
             "firefox": "Global\\FirefoxBrowserLock"
         }[self.browser_type]
-        mutex = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, mutex_name)
-        if mutex:
-            ctypes.windll.kernel32.CloseHandle(mutex)
+        self.mutex = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, mutex_name)
+        if self.mutex:
+            ctypes.windll.kernel32.CloseHandle(self.mutex)
             return True
         return False
 
@@ -395,7 +398,7 @@ class App:
                             browser_window.maximize()
             except:
                 pass
-            time.sleep(0.3)
+            time.sleep(0.1)
 
     def terminate_unauthorized_apps(self):
         forbidden = ["chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
@@ -420,15 +423,31 @@ class App:
         while self.is_running:
             try:
                 if not self.verify_browser_process_active():
-                    self.main_window.after(0, lambda: [self.main_window.destroy(),
-                                                       process_blocker.ProcessBlocker(password=hashlib.sha256(
-                                                           self.unlock_password.encode('utf-8')).hexdigest())])
+                    if self.main_window.winfo_exists():
+                        self.main_window.after(0, self.safe_shutdown)
+                    break
                 self.close_unauthorized_tabs()
-                self.browser_driver.switch_to.window(self.browser_driver.window_handles[0])
-                self.validate_current_url()
-            except:
-                pass
-            time.sleep(0.3)
+                if self.browser_driver:
+                    self.browser_driver.switch_to.window(self.browser_driver.window_handles[0])
+                    self.validate_current_url()
+            except Exception as e:
+                print(f"Ошибка мониторинга: {e}")
+            time.sleep(0.1)
+
+    def safe_shutdown(self):
+        try:
+            if self.main_window.winfo_exists():
+                self.main_window.destroy()
+            ctypes.windll.kernel32.CloseHandle(self.mutex)
+            ctypes.windll.kernel32.CloseHandle(self.mutex2)
+            if not self.flag:
+                password = hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()
+            else:
+                password = RAMWORKER.read_sldid_file("data")
+            self.is_running = False
+            process_blocker.ProcessBlocker(password=password)
+        except Exception as e:
+            print(f"Ошибка при закрытии: {e}")
 
     def close_unauthorized_tabs(self):
         if self.verify_browser_process_active() and len(self.browser_driver.window_handles) > 1:
@@ -506,6 +525,7 @@ class App:
 
 
 def main(browser_type):
+    RAMWORKER.write_sldid_file("browser", browser_type)
     main_window = Tk()
     main_window.title("soldi")
     main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
@@ -634,15 +654,14 @@ def main(browser_type):
         nonlocal whitelisted_domains, unlock_password
         if switch_info:
             whitelisted_domains = RAMWORKER.read_sldid_file("session").split()
-        time_limit = RAMWORKER.read_txt_file("config.txt")
-        RAMWORKER.write_txt_file("config.txt", "")
+        time_limit = RAMWORKER.read_sldid_file("config")
         unlock_password = domain_entry.get()
         if not unlock_password:
             ctypes.windll.user32.MessageBoxW(0, "Вы не ввели пароль", "Ошибка", 0x0000 | 0x0010 | 0x1000)
         else:
             main_window.destroy()
             write_session(whitelisted_domains)
-            App(whitelisted_domains, unlock_password, time_limit, browser_type)
+            App(whitelisted_domains, unlock_password, time_limit, browser_type, False)
 
     confirm_button = Button(buttons_frame,
                             text="ДОБАВИТЬ ССЫЛКУ",

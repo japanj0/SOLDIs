@@ -4,6 +4,7 @@ import time
 import threading
 import RAMWORKER
 import hashlib
+import UnitedBrowsersModul
 import os
 import keyboard
 import shutil
@@ -102,6 +103,19 @@ class ProcessBlocker:
                                   padx=30,
                                   pady=10)
         submit_button.pack()
+        resume_button = tk.Button(content_frame,
+                                  text="ВОЗОБНОВИТЬ БРАУЗЕР",
+                                  font=("Arial", 16, 'bold'),
+                                  command=self.resume_browser,
+                                  bg="#009688",
+                                  fg="white",
+                                  activebackground="#00796B",
+                                  activeforeground="white",
+                                  bd=0,
+                                  relief='flat',
+                                  padx=30,
+                                  pady=10)
+        resume_button.pack(pady=(20, 0))
 
         separator = tk.Frame(content_frame, height=2, bg="#4b6cb7", bd=0)
         separator.pack(fill='x', pady=20)
@@ -115,6 +129,25 @@ class ProcessBlocker:
             self.cleanup()
             self.running = False
             self.root.destroy()
+
+    def resume_browser(self):
+
+        try:
+            RAMWORKER.MEI_del()
+            session = RAMWORKER.read_sldid_file("session")
+            password = RAMWORKER.read_sldid_file("data")
+            time_limit = RAMWORKER.read_sldid_file("config")
+            browser = RAMWORKER.read_sldid_file("browser")
+
+            if session and password:
+                whitelist = session.strip().split()
+                self.running = False
+                if self.monitor_thread.is_alive():
+                    self.monitor_thread.join(timeout=1)
+                self.root.after(0,lambda: [self.root.destroy(), UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)])
+
+        except Exception as e:
+            print(f"Ошибка при восстановлении браузера: {e}")
 
     def monitor_processes(self):
         while self.running:

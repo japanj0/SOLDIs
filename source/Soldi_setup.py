@@ -258,7 +258,7 @@ def create_main_interface():
         return new_text.isdigit()
     def write_some():
         if time_entry.get()!="":
-            RAMWORKER.write_txt_file("config.txt", time_entry.get())
+            RAMWORKER.write_sldid_file("config", time_entry.get())
             time_entry.delete(0, 'end')
             confirm_button.destroy()
             time_entry.destroy()
@@ -299,7 +299,7 @@ def create_main_interface():
 
     time_frame = Frame(main_frame, bg=BG_COLOR)
     time_frame.pack(pady=(30, 0))
-    if not RAMWORKER.read_txt_file("config.txt"):
+    if not RAMWORKER.read_sldid_file("config"):
         info_lab = Label(time_frame,
           text="Введите допустимое время\nиспользования в минутах (по желанию):",
           font=tkfont.Font(family=FONT_FAMILY, size=14, weight="bold"),
@@ -386,7 +386,6 @@ except Exception as e:
     ed_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
     fox_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
     chrome_im = ImageTk.PhotoImage(Image.new('RGB', img_size, BG_COLOR))
-RAMWORKER.create_txt_file("config.txt")
 
 
 def is_scheduled_launch():
@@ -400,7 +399,7 @@ else:
     if is_scheduled_launch():
         sys.exit()
     else:
-        RAMWORKER.write_txt_file("config.txt","")
+        RAMWORKER.write_sldid_file("config","")
         require_admin()
         create_main_interface()
         win.mainloop()
