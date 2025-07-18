@@ -574,7 +574,37 @@ def main(browser_type):
             return False
         tld = parts[-1].lower()
         return tld in trusted_tlds
+    def del_web_site():
+        try:
+            info_site = whitelisted_domains[-1]
 
+            whitelisted_domains.pop()
+            bad_label = Label(input_frame,
+                          text=f"Ссылка {info_site} удалена!",
+                          fg="#F4A900",
+                          bg="#ffffff",
+                          font=("Arial", 12))
+
+        except Exception:
+            bad_label = Label(input_frame,
+                              text=f"Ссылки отсутствуют, удалять нечего!",
+                              fg="#F4A900",
+                              bg="#ffffff",
+                              font=("Arial", 12))
+        bad_label.pack()
+        reject_button.config(state="disabled")
+        main_window.after(1000, lambda: [reject_button.config(state="normal"), bad_label.destroy()])
+    def del_all():
+        for i in range(len(whitelisted_domains)):
+            whitelisted_domains.pop()
+        bad_label = Label(input_frame,
+                          text=f"Список был полностью очищен",
+                          fg="#F4A900",
+                          bg="#ffffff",
+                          font=("Arial", 12))
+        bad_label.pack()
+        del_all_button.config(state="disabled")
+        main_window.after(1000, lambda: [del_all_button.config(state="normal"), bad_label.destroy()])
     def add_allowed_website():
         def des_and_conf():
             bad_label.destroy()
@@ -630,6 +660,8 @@ def main(browser_type):
             if flag:
                 switch_info = True
             session_button.destroy()
+            reject_button.destroy()
+            del_all_button.destroy()
             confirm_button.destroy()
             next_button.config(text="УСТАНОВИТЬ ПАРОЛЬ",
                                command=set_unlock_password,
@@ -639,7 +671,7 @@ def main(browser_type):
                                activebackground="#3a5a99",
                                activeforeground="white")
             domain_label.config(text="Придумайте надёжный пароль\nдля отключения программы")
-            next_button.pack(pady=(20, 10))
+            next_button.pack(pady=(0, 5))
 
     def write_session(whitelist):
         RAMWORKER.write_sldid_file("session", " ".join(whitelist))
@@ -676,6 +708,32 @@ def main(browser_type):
                             padx=20,
                             pady=10)
     confirm_button.pack(pady=(0, 15), fill=X)
+    reject_button = Button(buttons_frame,
+                            text="УДАЛИТЬ ПОСЛЕДНЮЮ ССЫЛКУ",
+                            font=("Arial", 14, 'bold'),
+                            command=del_web_site,
+                            bg="#FF4500",
+                            fg="white",
+                            activebackground="#FF4500",
+                            activeforeground="white",
+                            bd=0,
+                            relief=FLAT,
+                            padx=20,
+                            pady=10)
+    reject_button.pack(pady=(0, 15), fill=X)
+    del_all_button = Button(buttons_frame,
+                            text="УДАЛИТЬ ВСЕ ССЫЛКИ",
+                            font=("Arial", 14, 'bold'),
+                            command=del_all,
+                            bg="#8B0000",
+                            fg="white",
+                            activebackground="#8B0000",
+                            activeforeground="white",
+                            bd=0,
+                            relief=FLAT,
+                            padx=20,
+                            pady=10)
+    del_all_button.pack(pady=(0, 15), fill=X)
     session_button = Button(buttons_frame,
                             text="ВОССТАНОВИТЬ СЕССИЮ",
                             font=("Arial", 14, 'bold'),

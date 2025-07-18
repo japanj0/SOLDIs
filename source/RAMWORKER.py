@@ -1,4 +1,3 @@
-import subprocess
 import psutil
 import os
 import sys
@@ -6,7 +5,6 @@ import shutil
 import tempfile
 from cryptography.fernet import Fernet
 import win32com.client
-
 _cipher = None
 def clearing_RAM():
     drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe','msedge.exe','soldi.exe','python.exe']
@@ -18,39 +16,6 @@ def clearing_RAM():
                 print(proc.info['name'])
             except Exception as e:
                 print(e)
-def create_txt_file(filename, default_content="", app_folder="Soldi"):
-    appdata_path = os.getenv('LOCALAPPDATA')
-    full_dir = os.path.join(appdata_path, app_folder)
-    file_path = os.path.join(full_dir, filename)
-    os.makedirs(full_dir, exist_ok=True)
-    if not os.path.exists(file_path):
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(default_content)
-    return file_path
-def delete_txt_file(filename, app_folder="Soldi"):
-    appdata_path = os.getenv('LOCALAPPDATA')
-    full_dir = os.path.join(appdata_path, app_folder)
-    file_path = os.path.join(full_dir, filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
-
-
-def read_txt_file(filename, app_folder="Soldi"):
-    appdata_path = os.getenv('LOCALAPPDATA')
-    full_dir = os.path.join(appdata_path, app_folder)
-    file_path = os.path.join(full_dir, filename)
-
-    if os.path.exists(file_path):
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    return False
-
-def write_txt_file(filename, content, app_folder="Soldi"):
-    file_path = create_txt_file(filename, "", app_folder)
-    with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(content)
-    return True
-
 def add_to_autostart(app_name: str) -> bool:
     try:
         if getattr(sys, 'frozen', False):
@@ -94,16 +59,6 @@ def add_to_autostart(app_name: str) -> bool:
         return True
     except Exception:
         return False
-
-def remove_from_autostart(app_name):
-    try:
-        scheduler = win32com.client.Dispatch("Schedule.Service")
-        scheduler.Connect()
-        root_folder = scheduler.GetFolder("\\")
-        root_folder.DeleteTask(app_name, 0)
-        return True
-    except Exception as e:
-        return e
 def kill_process_by_name(process_name):
     for proc in psutil.process_iter(['pid', 'name']):
         if proc.info['name'] == process_name:

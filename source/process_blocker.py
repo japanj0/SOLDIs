@@ -49,7 +49,6 @@ class ProcessBlocker:
 
     def emergency_exit(self):
         keyboard.remove_hotkey(self.key_kill)
-        RAMWORKER.delete_txt_file("Flag.txt")
         RAMWORKER.MEI_del()
         RAMWORKER.delete_sldid_file("data")
         RAMWORKER.delete_sldid_file("config")
@@ -107,25 +106,24 @@ class ProcessBlocker:
                                   pady=10)
         submit_button.pack()
         resume_button = tk.Button(content_frame,
-                                  text="ВОЗОБНОВИТЬ БРАУЗЕР",
+                                  text="ВОЗОБНОВИТЬ\nБРАУЗЕР",
                                   font=("Arial", 16, 'bold'),
                                   command=self.resume_browser,
-                                  bg="#009688",
+                                  bg="#4b6cb7",
                                   fg="white",
-                                  activebackground="#00796B",
+                                  activebackground="#3a5a99",
                                   activeforeground="white",
                                   bd=0,
                                   relief='flat',
-                                  padx=30,
+                                  padx=29,
                                   pady=10)
-        resume_button.pack(pady=(20, 0))
+        resume_button.pack(pady=(10, 0))
 
         separator = tk.Frame(content_frame, height=2, bg="#4b6cb7", bd=0)
         separator.pack(fill='x', pady=20)
 
     def check_password(self):
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
-            RAMWORKER.delete_txt_file("Flag.txt")
             RAMWORKER.delete_sldid_file("config")
             RAMWORKER.MEI_del()
             RAMWORKER.delete_sldid_file("data")
