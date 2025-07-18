@@ -9,6 +9,7 @@ import os
 import keyboard
 import shutil
 import sys
+import ctypes
 
 
 class ProcessBlocker:
@@ -41,17 +42,19 @@ class ProcessBlocker:
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='#1a1a1a')
 
-        keyboard.add_hotkey('ctrl+shift+alt+p+q+n', self.emergency_exit)
+        self.key_kill = keyboard.add_hotkey('ctrl+shift+alt+p+q+n', self.emergency_exit)
 
         self.create_lock_screen()
         self.root.mainloop()
 
     def emergency_exit(self):
+        keyboard.remove_hotkey(self.key_kill)
         RAMWORKER.delete_txt_file("Flag.txt")
-        RAMWORKER.clearing_RAM()
         RAMWORKER.MEI_del()
         RAMWORKER.delete_sldid_file("data")
+        RAMWORKER.delete_sldid_file("config")
         self.cleanup()
+        RAMWORKER.clearing_RAM()
         self.root.destroy()
         sys.exit()
 
@@ -122,12 +125,14 @@ class ProcessBlocker:
 
     def check_password(self):
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
-            RAMWORKER.MEI_del()
             RAMWORKER.delete_txt_file("Flag.txt")
-            RAMWORKER.clearing_RAM()
+            RAMWORKER.delete_sldid_file("config")
+            RAMWORKER.MEI_del()
             RAMWORKER.delete_sldid_file("data")
+            keyboard.remove_hotkey(self.key_kill)
             self.cleanup()
             self.running = False
+            RAMWORKER.clearing_RAM()
             self.root.destroy()
 
     def resume_browser(self):
@@ -139,12 +144,15 @@ class ProcessBlocker:
             time_limit = RAMWORKER.read_sldid_file("config")
             browser = RAMWORKER.read_sldid_file("browser")
 
-            if session and password:
+            if session and password and not time_limit:
+                keyboard.remove_hotkey(self.key_kill)
                 whitelist = session.strip().split()
                 self.running = False
                 if self.monitor_thread.is_alive():
                     self.monitor_thread.join(timeout=1)
                 self.root.after(0,lambda: [self.root.destroy(), UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)])
+            else:
+                ctypes.windll.user32.MessageBoxW(0, "Администратор компьютера запретил\nвосстанавливать браузер\nиз-за ограничения по времени", "Ошибка", 0x0000 | 0x0010 | 0x1000)
 
         except Exception as e:
             print(f"Ошибка при восстановлении браузера: {e}")

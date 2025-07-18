@@ -398,7 +398,7 @@ class App:
                             browser_window.maximize()
             except:
                 pass
-            time.sleep(0.1)
+            time.sleep(1)
 
     def terminate_unauthorized_apps(self):
         forbidden = ["chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
@@ -432,7 +432,7 @@ class App:
                     self.validate_current_url()
             except Exception as e:
                 print(f"Ошибка мониторинга: {e}")
-            time.sleep(0.1)
+            time.sleep(0.4)
 
     def safe_shutdown(self):
         try:
