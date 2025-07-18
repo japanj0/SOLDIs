@@ -66,7 +66,7 @@ def kill_process_by_name(process_name):
 def MEI_del():
     temp_dir = os.environ["TEMP"]
     for item in os.listdir(temp_dir):
-        if item.startswith("MEI"):
+        if item.startswith("_MEI") or item.startswith("MEI"):
             item_path = os.path.join(temp_dir, item)
             if os.path.isdir(item_path):
                 shutil.rmtree(item_path, ignore_errors=True)
