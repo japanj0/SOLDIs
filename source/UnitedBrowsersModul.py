@@ -12,6 +12,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import RAMWORKER
 from urllib.parse import *
+from tkinter import ttk
 import idna
 import hashlib
 import zipfile
@@ -332,7 +333,6 @@ class App:
                 for asset in assets:
                     if "win64.zip" in asset["name"]:
                         return asset["browser_download_url"]
-                raise Exception("win64.zip не найден")
 
             def setup_geckodriver():
                 temp_dir = os.path.join(os.environ["TEMP"], "geckodriver")
@@ -405,7 +405,7 @@ class App:
                      "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
                      "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
                      "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
-                     "viber.exe", "cmd.exe"]
+                     "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe"]
         current = {
             "chrome": "chrome.exe",
             "edge": "msedge.exe",
@@ -525,8 +525,11 @@ class App:
 
 
 def main(browser_type):
+
     RAMWORKER.write_sldid_file("browser", browser_type)
     main_window = Tk()
+    if not RAMWORKER.read_sldid_file("config"):
+        checkbox_var = BooleanVar(value=False)
     main_window.title("soldi")
     main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
     whitelisted_domains = []
@@ -549,7 +552,7 @@ def main(browser_type):
     domain_label.pack()
 
     input_frame = Frame(container, bg='#ffffff')
-    input_frame.pack(pady=(0, 30))
+    input_frame.pack(pady=(0, 10))
 
     domain_entry = Entry(input_frame,
                          font=("Arial", 18),
@@ -568,22 +571,26 @@ def main(browser_type):
 
     def validate_domain_trustworthiness(url):
         trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф',
-                        'me','mit'}
+                        'me', 'mit', 'il', 'by', 'kz', 'eu', 'gb', 'fr', 'it', 'es', 'pt', 'nl', 'pl',
+                        'ch', 'se', 'no', 'fi', 'dk', 'ca', 'au', 'nz', 'jp', 'cn', 'in', 'br', 'mx', 'ar', 'cl', 'pe',
+                        'co', 've', 'id', 'my', 'th', 'vn', 'ph', 'sg', 'kr', 'tr', 'gr', 'at', 'be', 'cz', 'hu', 'ro',
+                        'sk', 'bg', 'hr', 'rs', 'si', 'lt', 'lv', 'ee', 'is', 'ie', 'za'}
         parts = url.strip().split('.')
         if len(parts) < 2 or not parts[-2]:
             return False
         tld = parts[-1].lower()
         return tld in trusted_tlds
+
     def del_web_site():
         try:
             info_site = whitelisted_domains[-1]
 
             whitelisted_domains.pop()
             bad_label = Label(input_frame,
-                          text=f"Ссылка {info_site} удалена!",
-                          fg="#F4A900",
-                          bg="#ffffff",
-                          font=("Arial", 12))
+                              text=f"Ссылка {info_site} удалена!",
+                              fg="#F4A900",
+                              bg="#ffffff",
+                              font=("Arial", 12))
 
         except Exception:
             bad_label = Label(input_frame,
@@ -594,17 +601,28 @@ def main(browser_type):
         bad_label.pack()
         reject_button.config(state="disabled")
         main_window.after(1000, lambda: [reject_button.config(state="normal"), bad_label.destroy()])
+
     def del_all():
-        for i in range(len(whitelisted_domains)):
-            whitelisted_domains.pop()
-        bad_label = Label(input_frame,
-                          text=f"Список был полностью очищен",
-                          fg="#F4A900",
-                          bg="#ffffff",
-                          font=("Arial", 12))
-        bad_label.pack()
-        del_all_button.config(state="disabled")
+        if whitelisted_domains != []:
+            for i in range(len(whitelisted_domains)):
+                whitelisted_domains.pop()
+            bad_label = Label(input_frame,
+                              text=f"Список был полностью очищен",
+                              fg="#F4A900",
+                              bg="#ffffff",
+                              font=("Arial", 12))
+            bad_label.pack()
+            del_all_button.config(state="disabled")
+        else:
+            bad_label = Label(input_frame,
+                              text=f"Список пуст, удалять нечего",
+                              fg="#F4A900",
+                              bg="#ffffff",
+                              font=("Arial", 12))
+            bad_label.pack()
+            del_all_button.config(state="disabled")
         main_window.after(1000, lambda: [del_all_button.config(state="normal"), bad_label.destroy()])
+
     def add_allowed_website():
         def des_and_conf():
             bad_label.destroy()
@@ -683,7 +701,7 @@ def main(browser_type):
             prompt_for_password_setup(True)
 
     def set_unlock_password():
-        nonlocal whitelisted_domains, unlock_password
+        nonlocal whitelisted_domains, unlock_password, checkbox_var
         if switch_info:
             whitelisted_domains = RAMWORKER.read_sldid_file("session").split()
         time_limit = RAMWORKER.read_sldid_file("config")
@@ -693,7 +711,31 @@ def main(browser_type):
         else:
             main_window.destroy()
             write_session(whitelisted_domains)
+            if not RAMWORKER.read_sldid_file("config"):
+                RAMWORKER.write_sldid_file("status", str(checkbox_var.get()))
             App(whitelisted_domains, unlock_password, time_limit, browser_type, False)
+
+    if not RAMWORKER.read_sldid_file("config"):
+        style = ttk.Style()
+        style.theme_use('alt')
+
+        style.configure('TCheckbutton',
+                    font=('Arial', 15),
+                    indicatorsize=16,
+                    padding=5,
+                    background='white',
+                    foreground='black'
+                    )
+
+        checkbox = ttk.Checkbutton(
+        buttons_frame,
+        text="Разрешить восстанавливать браузер",
+        variable=checkbox_var,
+        style='TCheckbutton',
+        takefocus=0
+    )
+
+        checkbox.pack(pady=5, anchor='w')
 
     confirm_button = Button(buttons_frame,
                             text="ДОБАВИТЬ ССЫЛКУ",
@@ -709,17 +751,17 @@ def main(browser_type):
                             pady=10)
     confirm_button.pack(pady=(0, 15), fill=X)
     reject_button = Button(buttons_frame,
-                            text="УДАЛИТЬ ПОСЛЕДНЮЮ ССЫЛКУ",
-                            font=("Arial", 14, 'bold'),
-                            command=del_web_site,
-                            bg="#FF4500",
-                            fg="white",
-                            activebackground="#FF4500",
-                            activeforeground="white",
-                            bd=0,
-                            relief=FLAT,
-                            padx=20,
-                            pady=10)
+                           text="УДАЛИТЬ ПОСЛЕДНЮЮ ССЫЛКУ",
+                           font=("Arial", 14, 'bold'),
+                           command=del_web_site,
+                           bg="#FF4500",
+                           fg="white",
+                           activebackground="#FF4500",
+                           activeforeground="white",
+                           bd=0,
+                           relief=FLAT,
+                           padx=20,
+                           pady=10)
     reject_button.pack(pady=(0, 15), fill=X)
     del_all_button = Button(buttons_frame,
                             text="УДАЛИТЬ ВСЕ ССЫЛКИ",
