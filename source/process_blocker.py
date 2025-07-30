@@ -9,7 +9,6 @@ import os
 import keyboard
 import shutil
 import sys
-import ctypes
 
 
 class ProcessBlocker:
@@ -140,7 +139,7 @@ class ProcessBlocker:
 
     def resume_browser(self):
         try:
-            RAMWORKER.MEI_del()
+
             session = RAMWORKER.read_sldid_file("session")
             password = RAMWORKER.read_sldid_file("data")
             time_limit = RAMWORKER.read_sldid_file("config")
@@ -150,8 +149,9 @@ class ProcessBlocker:
                 whitelist = session.strip().split()
                 self.running = False
                 if self.monitor_thread.is_alive():
-                    self.monitor_thread.join(timeout=1)
-                self.root.after(0,lambda: [self.root.destroy(), UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)])
+                    self.monitor_thread.join()
+
+                self.root.after(1000,lambda: [self.root.destroy(), time.sleep(0.01), UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)])
         except Exception as e:
             print(f"Ошибка при восстановлении браузера: {e}")
 
