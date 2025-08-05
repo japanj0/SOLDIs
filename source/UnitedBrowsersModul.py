@@ -13,11 +13,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import RAMWORKER
 from urllib.parse import *
 from tkinter import ttk
-<<<<<<< HEAD
 import win32gui
 import win32con
-=======
->>>>>>> 26b22dd (#24 выполнен, новые tlds добавлены, checkbox внедрен)
 import idna
 import hashlib
 import zipfile
@@ -395,7 +392,6 @@ class App:
                 if self.verify_browser_process_active():
                     title = f"Каталог разрешённых"
                     browser_window = pygw.getWindowsWithTitle(title)
-                    self.main_window.lift()
                     if browser_window:
                         browser_window = browser_window[0]
                         if browser_window.isMinimized:
