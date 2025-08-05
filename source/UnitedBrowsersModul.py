@@ -368,7 +368,6 @@ class App:
         self.browser_driver.implicitly_wait(3)
         WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
         self.browser_driver.get(self.local_page_url)
-        self.browser_driver.execute_script("document.title = 'Каталог разрешённых';")
 
         self.browser_driver.implicitly_wait(1)
         RAMWORKER.add_to_autostart("Soldi")
@@ -386,11 +385,13 @@ class App:
     def enforce_security_restrictions(self):
         while self.is_running:
             try:
+                if self.browser_driver.title!="SoldiSecurity":
+                    self.browser_driver.execute_script(f"document.title = 'SoldiSecurity';")
                 self.terminate_unauthorized_apps()
                 self.terminate_explorer_safelly()
                 self.terminate_unauthorized_instances()
                 if self.verify_browser_process_active():
-                    title = f"Каталог разрешённых"
+                    title = f"SoldiSecurity"
                     browser_window = pygw.getWindowsWithTitle(title)
                     if browser_window:
                         browser_window = browser_window[0]
@@ -400,14 +401,16 @@ class App:
                             browser_window.maximize()
             except Exception:
                 pass
-            time.sleep(0.6)
+            time.sleep(0.5)
+
+
 
     def terminate_unauthorized_apps(self):
         forbidden = ["chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
                      "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
                      "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
                      "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
-                     "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe"]
+                     "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe","WinStore.App.exe"]
         current = {
             "chrome": "chrome.exe",
             "edge": "msedge.exe",

@@ -26,7 +26,7 @@ class ProcessBlocker:
             "rulauncher.exe", "javaw.exe", "java.exe",
             "discord.exe", "steam.exe", "epicgameslauncher.exe",
             "battle.net.exe", "telegram.exe", "viber.exe",
-            "browser.exe", "cmd.exe", "powershell.exe","notepad.exe","wordpad.exe","WINWORD.exe"
+            "browser.exe", "cmd.exe", "powershell.exe","notepad.exe","wordpad.exe","WINWORD.exe","WinStore.App.exe"
         ]
 
         self.monitor_thread = threading.Thread(target=self.monitor_processes)
