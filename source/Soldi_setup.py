@@ -362,7 +362,7 @@ try:
     title_font = tkfont.Font(family=FONT_FAMILY, size=36, weight="bold")
     button_font_large = tkfont.Font(family=FONT_FAMILY, size=24, weight="bold")
     exit_font = tkfont.Font(family=FONT_FAMILY, size=18)
-except:
+except Exception:
     title_font = tkfont.Font(size=36, weight="bold")
     button_font_large = tkfont.Font(size=24, weight="bold")
     exit_font = tkfont.Font(size=18)

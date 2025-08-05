@@ -8,8 +8,9 @@ import UnitedBrowsersModul
 import os
 import keyboard
 import shutil
+import win32gui
+import win32con
 import sys
-import ctypes
 
 
 class ProcessBlocker:
@@ -124,6 +125,15 @@ class ProcessBlocker:
 
         separator = tk.Frame(content_frame, height=2, bg="#4b6cb7", bd=0)
         separator.pack(fill='x', pady=20)
+    def terminate_explorer_safelly(self):
+        try:
+            def callback(hwnd, _):
+                if win32gui.GetClassName(hwnd) == "CabinetWClass":
+                    win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
+
+            win32gui.EnumWindows(callback, None)
+        except Exception:
+            pass
 
     def check_password(self):
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
@@ -140,11 +150,16 @@ class ProcessBlocker:
 
     def resume_browser(self):
         try:
-            RAMWORKER.MEI_del()
             session = RAMWORKER.read_sldid_file("session")
             password = RAMWORKER.read_sldid_file("data")
             time_limit = RAMWORKER.read_sldid_file("config")
             browser = RAMWORKER.read_sldid_file("browser")
+            keyboard.remove_hotkey(self.key_kill)
+            whitelist = session.strip().split()
+            self.running = False
+            if self.monitor_thread.is_alive():
+                self.monitor_thread.join()
+            self.root.after(1000,lambda: [self.root.destroy(), time.sleep(0.01), UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)])
             if session and password and not time_limit:
                 keyboard.remove_hotkey(self.key_kill)
                 whitelist = session.strip().split()
@@ -161,6 +176,7 @@ class ProcessBlocker:
                 try:
                     if proc.info['name'].lower() in self.blocked_apps:
                         proc.kill()
-                except:
+                except Exception:
                     pass
+            self.terminate_explorer_safelly()
             time.sleep(1)

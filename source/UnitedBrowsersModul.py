@@ -6,13 +6,18 @@ import uuid
 from tkinter import *
 from selenium.common.exceptions import WebDriverException
 import psutil
-import pygetwindow as gw
+import pygetwindow as pygw
 import process_blocker
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import RAMWORKER
 from urllib.parse import *
 from tkinter import ttk
+<<<<<<< HEAD
+import win32gui
+import win32con
+=======
+>>>>>>> 26b22dd (#24 выполнен, новые tlds добавлены, checkbox внедрен)
 import idna
 import hashlib
 import zipfile
@@ -255,12 +260,6 @@ class App:
                 }
             }
         </style>
-        <script>
-            window.open = function() {
-                alert("Открытие новых окон запрещено.");
-                return null;
-            };
-        </script>
     </head>
     <body>
         <div class="container">
@@ -284,7 +283,7 @@ class App:
         if self.browser_driver is not None:
             try:
                 self.browser_driver.quit()
-            except:
+            except Exception:
                 pass
         self.user_data_dir = f"C:\\Temp\\{self.browser_type.capitalize()}PythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
@@ -305,6 +304,7 @@ class App:
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)
             self.browser_driver = webdriver.Chrome(options=options)
+
         elif self.browser_type == "edge":
             options = EdgeOptions()
             options.page_load_strategy = "none"
@@ -325,6 +325,7 @@ class App:
             options.add_experimental_option('useAutomationExtension', False)
             options.add_argument("--app-name=cara")
             self.browser_driver = webdriver.Edge(options=options)
+
         elif self.browser_type == "firefox":
             def get_latest_geckodriver_url():
                 response = requests.get("https://api.github.com/repos/mozilla/geckodriver/releases/latest")
@@ -357,7 +358,7 @@ class App:
             options.page_load_strategy = "none"
             options.set_preference("remote-debugging-port", 9222)
             options.add_argument(f"--user-data-dir={self.user_data_dir}")
-            options.add_argument("--start-maximized")
+
             options.add_argument("--no-remote")
             options.add_argument("--new-instance")
             options.add_argument("--ignore-certificate-errors")
@@ -365,13 +366,16 @@ class App:
             options.set_preference("app.update.enabled", False)
             service = FirefoxService(executable_path=path)
             self.browser_driver = webdriver.Firefox(options=options, service=service)
+            self.browser_driver.maximize_window()
+
         self.browser_driver.implicitly_wait(3)
         WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
         self.browser_driver.get(self.local_page_url)
+        self.browser_driver.execute_script("document.title = 'Каталог разрешённых';")
+
         self.browser_driver.implicitly_wait(1)
-        self.browser_driver.maximize_window()
-        self.browser_driver.execute_script(f"document.title = '{self.browser_type}gi';")
         RAMWORKER.add_to_autostart("Soldi")
+
 
     def verify_browser_process_active(self):
         if self.browser_driver is None:
@@ -386,19 +390,21 @@ class App:
         while self.is_running:
             try:
                 self.terminate_unauthorized_apps()
+                self.terminate_explorer_safelly()
                 self.terminate_unauthorized_instances()
                 if self.verify_browser_process_active():
-                    title = f"{self.browser_type}gi"
-                    browser_window = gw.getWindowsWithTitle(title)
+                    title = f"Каталог разрешённых"
+                    browser_window = pygw.getWindowsWithTitle(title)
+                    self.main_window.lift()
                     if browser_window:
                         browser_window = browser_window[0]
                         if browser_window.isMinimized:
                             browser_window.restore()
                         if not browser_window.isMaximized:
                             browser_window.maximize()
-            except:
+            except Exception:
                 pass
-            time.sleep(1)
+            time.sleep(0.6)
 
     def terminate_unauthorized_apps(self):
         forbidden = ["chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
@@ -416,8 +422,18 @@ class App:
                 name = proc.info['name'].lower()
                 if name in forbidden and name != current:
                     proc.terminate()
-            except:
+            except Exception:
                 continue
+    def terminate_explorer_safelly(self):
+        try:
+            def callback(hwnd, _):
+                if win32gui.GetClassName(hwnd) == "CabinetWClass":
+                    win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
+
+            win32gui.EnumWindows(callback, None)
+        except Exception:
+            pass
+
 
     def monitor_browser_tabs(self):
         while self.is_running:
@@ -455,7 +471,7 @@ class App:
                 try:
                     self.browser_driver.switch_to.window(handle)
                     self.browser_driver.execute_script("window.close();")
-                except:
+                except Exception:
                     pass
 
     def validate_current_url(self):
@@ -487,7 +503,7 @@ class App:
             if not domain_allowed:
                 self.browser_driver.execute_script("window.stop();")
                 self.browser_driver.get(self.local_page_url)
-        except:
+        except Exception:
             self.browser_driver = None
 
     def terminate_unauthorized_instances(self):
@@ -503,9 +519,9 @@ class App:
                     try:
                         if proc.info['name'].lower() == 'firefox.exe' and proc.info['pid'] not in controlled_pids:
                             proc.terminate()
-                    except:
+                    except Exception:
                         continue
-            except:
+            except Exception:
                 pass
         else:
             binary = {
@@ -520,7 +536,7 @@ class App:
                             pass
                         else:
                             proc.terminate()
-                except:
+                except Exception:
                     continue
 
 

@@ -129,7 +129,7 @@ def read_sldid_file(filename, app_folder="Soldi"):
         with open(file_path, 'rb') as f:
             encrypted = f.read()
             return cipher.decrypt(encrypted).decode()
-    except:
+    except Exception:
         return ""
 
 def write_sldid_file(filename, content, app_folder="Soldi"):
