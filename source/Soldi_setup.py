@@ -301,54 +301,41 @@ def create_main_interface():
     time_frame.pack(pady=(30, 0))
     if not RAMWORKER.read_sldid_file("config"):
         info_lab = Label(time_frame,
-          text="Введите допустимое время\nиспользования в минутах (по желанию):",
-          font=tkfont.Font(family=FONT_FAMILY, size=14, weight="bold"),
-          bg=BG_COLOR,
-          fg=TEXT_COLOR)
+                         text="Введите допустимое время\nиспользования в минутах (по желанию):",
+                         font=tkfont.Font(family=FONT_FAMILY, size=14, weight="bold"),
+                         bg=BG_COLOR,
+                         fg=TEXT_COLOR)
         info_lab.pack()
 
         validate_cmd = win.register(only_numbers)
         time_entry = Entry(time_frame,
-                       font=("Arial", 20),
-                       bd=2,
-                       relief=FLAT,
-                       bg="white",
-                       fg="black",
-                       insertbackground="#4b6cb7",
-                       validate="key",
-                       validatecommand=(validate_cmd, '%P'),
-                       highlightbackground="black",
-                       highlightthickness=2,
-                       width=25)
+                           font=("Arial", 20),
+                           bd=2,
+                           relief=FLAT,
+                           bg="white",
+                           fg="black",
+                           insertbackground="#4b6cb7",
+                           validate="key",
+                           validatecommand=(validate_cmd, '%P'),
+                           highlightbackground="black",
+                           highlightthickness=2,
+                           width=25)
         time_entry.pack(pady=10)
 
         confirm_button = Button(time_frame,
-                            text="Подтвердить",
-                            font=tkfont.Font(family=FONT_FAMILY, size=23),
-                            bg="#DCDCDC",
-                            fg="black",
-                            activebackground="gray",
-                            relief=FLAT,
-                            padx=55,
-                            bd=0,
-                            pady=1,
-                            command=write_some)
-        confirm_button.pack(pady=(0, 0), expand=True)
+                                text="Подтвердить",
+                                font=tkfont.Font(family=FONT_FAMILY, size=23),
+                                bg="#DCDCDC",
+                                fg="black",
+                                activebackground="gray",
+                                relief=FLAT,
+                                padx=55,
+                                bd=0,
+                                pady=1,
+                                command=write_some)
+        confirm_button.pack(pady=(10, 10), expand=True)
 
-    exit_button = Button(main_frame,
-                         text="Закрыть приложение",
-                         font=exit_font,
-                         bg="#DCDCDC",
-                         activebackground="gray",
-                         fg=TEXT_COLOR,
-                         activeforeground=TEXT_COLOR,
-                         relief=FLAT,
-                         command=win.destroy,
-                         padx=30,
-                         bd=0,
 
-                         pady=5)
-    exit_button.pack(pady=(5, 0))
 
 
 win = Tk()
