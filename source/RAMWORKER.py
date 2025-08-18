@@ -7,7 +7,12 @@ from cryptography.fernet import Fernet
 import win32com.client
 _cipher = None
 def clearing_RAM():
-    drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe','msedge.exe','soldi.exe','python.exe']
+    drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe', 'msedge.exe', 'python.exe']
+    if getattr(sys, 'frozen', False):
+        executable_path = sys.executable
+        executable_name = os.path.basename(executable_path)
+        drivers.append(executable_name)
+
     for proc in psutil.process_iter(['name']):
         print(proc)
         if proc.info['name'] in drivers:

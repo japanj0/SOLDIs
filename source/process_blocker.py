@@ -29,9 +29,7 @@ class ProcessBlocker:
             "browser.exe", "cmd.exe", "powershell.exe","notepad.exe","wordpad.exe","WINWORD.exe","WinStore.App.exe"
         ]
 
-        self.monitor_thread = threading.Thread(target=self.monitor_processes)
-        self.monitor_thread.daemon = True
-        self.monitor_thread.start()
+        self.monitor_thread = threading.Thread(target=self.monitor_processes, daemon=True).start()
 
         self.init_ui()
 
@@ -49,16 +47,16 @@ class ProcessBlocker:
         self.root.mainloop()
 
     def emergency_exit(self):
-        keyboard.remove_hotkey(self.key_kill)
-        RAMWORKER.MEI_del()
-        RAMWORKER.delete_sldid_file("data")
         RAMWORKER.delete_sldid_file("config")
         RAMWORKER.delete_sldid_file("status")
+        RAMWORKER.MEI_del()
+        RAMWORKER.delete_sldid_file("data")
         RAMWORKER.delete_sldid_file("browser")
+        keyboard.remove_hotkey(self.key_kill)
         self.cleanup()
+        self.running = False
         RAMWORKER.clearing_RAM()
-        self.root.destroy()
-        sys.exit()
+
 
     def cleanup(self):
         temp_dir = r"C:\Temp"
@@ -146,7 +144,7 @@ class ProcessBlocker:
             self.cleanup()
             self.running = False
             RAMWORKER.clearing_RAM()
-            self.root.destroy()
+
 
     def resume_browser(self):
         try:
