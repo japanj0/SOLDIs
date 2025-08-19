@@ -6,15 +6,15 @@ import uuid
 from tkinter import *
 from selenium.common.exceptions import WebDriverException
 import psutil
-import pygetwindow as pygw
+import win32gui
+import win32con
+import pygetwindow as gw
 import process_blocker
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import RAMWORKER
 from urllib.parse import *
 from tkinter import ttk
-import win32gui
-import win32con
 import idna
 import hashlib
 import zipfile
@@ -257,6 +257,12 @@ class App:
                 }
             }
         </style>
+        <script>
+            window.open = function() {
+                alert("Открытие новых окон запрещено.");
+                return null;
+            };
+        </script>
     </head>
     <body>
         <div class="container">
@@ -280,7 +286,7 @@ class App:
         if self.browser_driver is not None:
             try:
                 self.browser_driver.quit()
-            except Exception:
+            except:
                 pass
         self.user_data_dir = f"C:\\Temp\\{self.browser_type.capitalize()}PythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
@@ -301,7 +307,6 @@ class App:
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)
             self.browser_driver = webdriver.Chrome(options=options)
-
         elif self.browser_type == "edge":
             options = EdgeOptions()
             options.page_load_strategy = "none"
@@ -322,7 +327,6 @@ class App:
             options.add_experimental_option('useAutomationExtension', False)
             options.add_argument("--app-name=cara")
             self.browser_driver = webdriver.Edge(options=options)
-
         elif self.browser_type == "firefox":
             def get_latest_geckodriver_url():
                 response = requests.get("https://api.github.com/repos/mozilla/geckodriver/releases/latest")
@@ -355,7 +359,7 @@ class App:
             options.page_load_strategy = "none"
             options.set_preference("remote-debugging-port", 9222)
             options.add_argument(f"--user-data-dir={self.user_data_dir}")
-
+            options.add_argument("--start-maximized")
             options.add_argument("--no-remote")
             options.add_argument("--new-instance")
             options.add_argument("--ignore-certificate-errors")
@@ -363,15 +367,13 @@ class App:
             options.set_preference("app.update.enabled", False)
             service = FirefoxService(executable_path=path)
             self.browser_driver = webdriver.Firefox(options=options, service=service)
-            self.browser_driver.maximize_window()
-
         self.browser_driver.implicitly_wait(3)
         WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
         self.browser_driver.get(self.local_page_url)
-
         self.browser_driver.implicitly_wait(1)
+        self.browser_driver.maximize_window()
+        self.browser_driver.execute_script(f"document.title = '{self.browser_type}gi';")
         RAMWORKER.add_to_autostart("Soldi")
-
 
     def verify_browser_process_active(self):
         if self.browser_driver is None:
@@ -385,44 +387,22 @@ class App:
     def enforce_security_restrictions(self):
         while self.is_running:
             try:
-                if self.browser_driver.title!="SoldiSecurity":
-                    self.browser_driver.execute_script(f"document.title = 'SoldiSecurity';")
                 self.terminate_unauthorized_apps()
                 self.terminate_explorer_safelly()
                 self.terminate_unauthorized_instances()
                 if self.verify_browser_process_active():
-                    title = f"SoldiSecurity"
-                    browser_window = pygw.getWindowsWithTitle(title)
+                    title = f"{self.browser_type}gi"
+                    browser_window = gw.getWindowsWithTitle(title)
                     if browser_window:
                         browser_window = browser_window[0]
                         if browser_window.isMinimized:
                             browser_window.restore()
                         if not browser_window.isMaximized:
                             browser_window.maximize()
-            except Exception:
+            except:
                 pass
-            time.sleep(0.5)
+            time.sleep(1)
 
-
-
-    def terminate_unauthorized_apps(self):
-        forbidden = ["chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
-                     "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
-                     "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
-                     "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
-                     "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe","WinStore.App.exe"]
-        current = {
-            "chrome": "chrome.exe",
-            "edge": "msedge.exe",
-            "firefox": "firefox.exe"
-        }[self.browser_type]
-        for proc in psutil.process_iter(['pid', 'name']):
-            try:
-                name = proc.info['name'].lower()
-                if name in forbidden and name != current:
-                    proc.terminate()
-            except Exception:
-                continue
     def terminate_explorer_safelly(self):
         try:
             def callback(hwnd, _):
@@ -433,6 +413,24 @@ class App:
         except Exception:
             pass
 
+    def terminate_unauthorized_apps(self):
+        forbidden = ["chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
+                     "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
+                     "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
+                     "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
+                     "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe", "WinStore.App.exe"]
+        current = {
+            "chrome": "chrome.exe",
+            "edge": "msedge.exe",
+            "firefox": "firefox.exe"
+        }[self.browser_type]
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                name = proc.info['name'].lower()
+                if name in forbidden and name != current:
+                    proc.terminate()
+            except:
+                continue
 
     def monitor_browser_tabs(self):
         while self.is_running:
@@ -451,16 +449,20 @@ class App:
 
     def safe_shutdown(self):
         try:
-            if self.main_window.winfo_exists():
+            if self.main_window and self.main_window.winfo_exists():
                 self.main_window.destroy()
-            ctypes.windll.kernel32.CloseHandle(self.mutex)
-            ctypes.windll.kernel32.CloseHandle(self.mutex2)
+            if hasattr(self, 'mutex') and self.mutex:
+                ctypes.windll.kernel32.CloseHandle(self.mutex)
+            if hasattr(self, 'mutex2') and self.mutex2:
+                ctypes.windll.kernel32.CloseHandle(self.mutex2)
+
             if not self.flag:
                 password = hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()
             else:
                 password = RAMWORKER.read_sldid_file("data")
+
             self.is_running = False
-            process_blocker.ProcessBlocker(password=password)
+            process_blocker.ProcessBlocker(password=password, is_notrestarted=True)
         except Exception as e:
             print(f"Ошибка при закрытии: {e}")
 
@@ -470,7 +472,7 @@ class App:
                 try:
                     self.browser_driver.switch_to.window(handle)
                     self.browser_driver.execute_script("window.close();")
-                except Exception:
+                except:
                     pass
 
     def validate_current_url(self):
@@ -502,7 +504,7 @@ class App:
             if not domain_allowed:
                 self.browser_driver.execute_script("window.stop();")
                 self.browser_driver.get(self.local_page_url)
-        except Exception:
+        except:
             self.browser_driver = None
 
     def terminate_unauthorized_instances(self):
@@ -518,9 +520,9 @@ class App:
                     try:
                         if proc.info['name'].lower() == 'firefox.exe' and proc.info['pid'] not in controlled_pids:
                             proc.terminate()
-                    except Exception:
+                    except:
                         continue
-            except Exception:
+            except:
                 pass
         else:
             binary = {
@@ -535,7 +537,7 @@ class App:
                             pass
                         else:
                             proc.terminate()
-                except Exception:
+                except:
                     continue
 
 
@@ -543,6 +545,7 @@ def main(browser_type):
 
     RAMWORKER.write_sldid_file("browser", browser_type)
     main_window = Tk()
+    main_window.lift()
     if not RAMWORKER.read_sldid_file("config"):
         checkbox_var = BooleanVar(value=False)
     main_window.title("soldi")

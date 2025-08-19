@@ -5,7 +5,10 @@ import shutil
 import tempfile
 from cryptography.fernet import Fernet
 import win32com.client
-_cipher = None
+
+_CIPHER = None
+
+
 def clearing_RAM():
     drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe', 'msedge.exe', 'python.exe']
     if getattr(sys, 'frozen', False):
@@ -14,13 +17,16 @@ def clearing_RAM():
         drivers.append(executable_name)
 
     for proc in psutil.process_iter(['name']):
-        print(proc)
         if proc.info['name'] in drivers:
             try:
                 proc.terminate()
-                print(proc.info['name'])
-            except Exception as e:
-                print(e)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+
+
 def add_to_autostart(app_name: str) -> bool:
     try:
         if getattr(sys, 'frozen', False):
@@ -64,10 +70,14 @@ def add_to_autostart(app_name: str) -> bool:
         return True
     except Exception:
         return False
+
+
 def kill_process_by_name(process_name):
     for proc in psutil.process_iter(['pid', 'name']):
         if proc.info['name'] == process_name:
             proc.kill()
+
+
 def MEI_del():
     temp_dir = os.environ["TEMP"]
     for item in os.listdir(temp_dir):
@@ -98,55 +108,69 @@ def get_icon_path(relative_path):
     except Exception as e:
         print(f"Ошибка при извлечении изображения: {e}")
         return None
+
+
 def _get_cipher():
-    global _cipher
-    if _cipher is None:
+    global _CIPHER
+    if _CIPHER is None:
         key_file = os.path.join(os.getenv('LOCALAPPDATA'), 'Soldi', 'secret.key')
         os.makedirs(os.path.dirname(key_file), exist_ok=True)
+
         if os.path.exists(key_file):
-            with open(key_file, 'rb') as f:
-                key = f.read()
+            try:
+                with open(key_file, 'rb') as f:
+                    key = f.read()
+                _CIPHER = Fernet(key)
+            except:
+                key = Fernet.generate_key()
+                with open(key_file, 'wb') as f:
+                    f.write(key)
+                _CIPHER = Fernet(key)
         else:
             key = Fernet.generate_key()
             with open(key_file, 'wb') as f:
                 f.write(key)
-        _cipher = Fernet(key)
-    return _cipher
+            _CIPHER = Fernet(key)
+    return _CIPHER
 
-def create_sldid_file(filename, default_content="", app_folder="Soldi"):
-    cipher = _get_cipher()
+
+def _get_file_path(filename, app_folder="Soldi"):
     appdata_path = os.getenv('LOCALAPPDATA')
     full_dir = os.path.join(appdata_path, app_folder)
     if not filename.endswith('.sldid'):
         filename += '.sldid'
     file_path = os.path.join(full_dir, filename)
     os.makedirs(full_dir, exist_ok=True)
-    if not os.path.exists(file_path) and default_content:
-        encrypted = cipher.encrypt(default_content.encode())
-        with open(file_path, 'wb') as f:
-            f.write(encrypted)
     return file_path
+
 
 def read_sldid_file(filename, app_folder="Soldi"):
     cipher = _get_cipher()
-    file_path = create_sldid_file(filename, "", app_folder)
+    file_path = _get_file_path(filename, app_folder)
+
+    if not os.path.exists(file_path):
+        return ""
+
     try:
         with open(file_path, 'rb') as f:
             encrypted = f.read()
-            return cipher.decrypt(encrypted).decode()
+        return cipher.decrypt(encrypted).decode()
     except Exception:
         return ""
 
+
 def write_sldid_file(filename, content, app_folder="Soldi"):
     cipher = _get_cipher()
-    file_path = create_sldid_file(filename, "", app_folder)
+    file_path = _get_file_path(filename, app_folder)
+
     encrypted = cipher.encrypt(content.encode())
     with open(file_path, 'wb') as f:
         f.write(encrypted)
     return True
 
+
 def delete_sldid_file(filename, app_folder="Soldi"):
-    file_path = create_sldid_file(filename, "", app_folder)
+    file_path = _get_file_path(filename, app_folder)
     if os.path.exists(file_path):
         os.remove(file_path)
         return True

@@ -174,6 +174,7 @@ def Edge():
                 creationflags=subprocess.CREATE_NO_WINDOW,
                 shell=True
             )
+
             win.after(0, lambda: [win.destroy(), UnitedBrowsersModul.main("edge")])
         except FileNotFoundError:
             win.after(0, lambda: show_error(f"Edge не установлен на вашем ПК"))
@@ -190,10 +191,11 @@ def Firefox():
         time.sleep(2)
         try:
             os.startfile("firefox")
+
             for proc in psutil.process_iter(['pid', 'name']):
                 if proc.info['name'] == "firefox.exe":
                         proc.kill()
-            win.after(0, lambda: [win.destroy(), UnitedBrowsersModul.main("firefox")])
+            win.after(0, lambda: [win.destroy(),UnitedBrowsersModul.main("firefox") ])
         except FileNotFoundError :
             win.after(0, lambda: show_error(f"Firefox не установлен на вашем ПК"))
         except Exception:
@@ -209,11 +211,13 @@ def Chrome():
         time.sleep(2)
         try:
                 os.startfile("chrome")
+
                 subprocess.Popen(
                     "taskkill /f /im chrome.exe",
                     creationflags=subprocess.CREATE_NO_WINDOW,
                     shell=True
                 )
+
                 win.after(0, lambda: [win.destroy(), UnitedBrowsersModul.main("chrome")])
         except FileNotFoundError:
                 win.after(0, lambda: show_error(f"Chrome не установлен на вашем ПК"))
@@ -381,7 +385,7 @@ def is_scheduled_launch():
 
 if RAMWORKER.read_sldid_file("data"):
     win.destroy()
-    ProcessBlocker(password=RAMWORKER.read_sldid_file("data"))
+    ProcessBlocker(password=RAMWORKER.read_sldid_file("data"), is_notrestarted=False)
 else:
     if is_scheduled_launch():
         sys.exit()

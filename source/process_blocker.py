@@ -10,15 +10,15 @@ import keyboard
 import shutil
 import win32gui
 import win32con
-import sys
 
 
 class ProcessBlocker:
-    def __init__(self, password):
+    def __init__(self, password, is_notrestarted):
         self.password = password
+        self.is_notrestarted = is_notrestarted
         self.running = True
         self.blocked_apps = [
-            "msedge.exe", "chrome.exe", "firefox.exe",
+            "msedge.exe", "WinStore.App.exe","chrome.exe", "firefox.exe",
             "opera.exe", "yandex.exe", "iexplore.exe",
             "taskmgr.exe", "powershell.exe",
             "regedit.exe", "mmc.exe", "control.exe",
@@ -26,7 +26,7 @@ class ProcessBlocker:
             "rulauncher.exe", "javaw.exe", "java.exe",
             "discord.exe", "steam.exe", "epicgameslauncher.exe",
             "battle.net.exe", "telegram.exe", "viber.exe",
-            "browser.exe", "cmd.exe", "powershell.exe","notepad.exe","wordpad.exe","WINWORD.exe","WinStore.App.exe"
+            "browser.exe", "cmd.exe", "powershell.exe","notepad.exe","wordpad.exe","WINWORD.exe"
         ]
 
         self.monitor_thread = threading.Thread(target=self.monitor_processes, daemon=True).start()
@@ -47,13 +47,13 @@ class ProcessBlocker:
         self.root.mainloop()
 
     def emergency_exit(self):
+        self.cleanup()
         RAMWORKER.delete_sldid_file("config")
         RAMWORKER.delete_sldid_file("status")
         RAMWORKER.MEI_del()
         RAMWORKER.delete_sldid_file("data")
         RAMWORKER.delete_sldid_file("browser")
         keyboard.remove_hotkey(self.key_kill)
-        self.cleanup()
         self.running = False
         RAMWORKER.clearing_RAM()
 
@@ -106,7 +106,7 @@ class ProcessBlocker:
                                   padx=30,
                                   pady=10)
         submit_button.pack()
-        if RAMWORKER.read_sldid_file("status")=="True":
+        if RAMWORKER.read_sldid_file("status")=="True" and self.is_notrestarted:
             resume_button = tk.Button(content_frame,
                                   text="ВОЗОБНОВИТЬ\nБРАУЗЕР",
                                   font=("Arial", 16, 'bold'),
@@ -135,13 +135,14 @@ class ProcessBlocker:
 
     def check_password(self):
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
+            self.cleanup()
             RAMWORKER.delete_sldid_file("config")
             RAMWORKER.delete_sldid_file("status")
             RAMWORKER.MEI_del()
             RAMWORKER.delete_sldid_file("data")
             RAMWORKER.delete_sldid_file("browser")
             keyboard.remove_hotkey(self.key_kill)
-            self.cleanup()
+
             self.running = False
             RAMWORKER.clearing_RAM()
 
@@ -152,29 +153,26 @@ class ProcessBlocker:
             password = RAMWORKER.read_sldid_file("data")
             time_limit = RAMWORKER.read_sldid_file("config")
             browser = RAMWORKER.read_sldid_file("browser")
-            keyboard.remove_hotkey(self.key_kill)
-            whitelist = session.strip().split()
-            self.running = False
-            if self.monitor_thread.is_alive():
-                self.monitor_thread.join()
-            self.root.after(1000,lambda: [self.root.destroy(), time.sleep(0.01), UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)])
-            if session and password and not time_limit:
+
+            if session and password:
                 keyboard.remove_hotkey(self.key_kill)
                 whitelist = session.strip().split()
                 self.running = False
-                if self.monitor_thread.is_alive():
-                    self.monitor_thread.join(timeout=1)
-                self.root.after(0,lambda: [self.root.destroy(), UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)])
+                self.root.after(0, lambda: [
+                    self.root.destroy(),
+                    UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)
+                ])
         except Exception as e:
             print(f"Ошибка при восстановлении браузера: {e}")
 
     def monitor_processes(self):
         while self.running:
+            self.terminate_explorer_safelly()
             for proc in psutil.process_iter(['name']):
                 try:
                     if proc.info['name'].lower() in self.blocked_apps:
                         proc.kill()
                 except Exception:
                     pass
-            self.terminate_explorer_safelly()
+
             time.sleep(1)
