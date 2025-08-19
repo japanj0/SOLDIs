@@ -372,7 +372,6 @@ class App:
         self.browser_driver.get(self.local_page_url)
         self.browser_driver.implicitly_wait(1)
         self.browser_driver.maximize_window()
-        self.browser_driver.execute_script(f"document.title = '{self.browser_type}gi';")
         RAMWORKER.add_to_autostart("Soldi")
 
     def verify_browser_process_active(self):
@@ -387,11 +386,13 @@ class App:
     def enforce_security_restrictions(self):
         while self.is_running:
             try:
+                if self.browser_driver.title!="SoldiSecurity":
+                    self.browser_driver.execute_script(f"document.title = 'SoldiSecurity';")
                 self.terminate_unauthorized_apps()
                 self.terminate_explorer_safelly()
                 self.terminate_unauthorized_instances()
                 if self.verify_browser_process_active():
-                    title = f"{self.browser_type}gi"
+                    title = f"SoldiSecurity"
                     browser_window = gw.getWindowsWithTitle(title)
                     if browser_window:
                         browser_window = browser_window[0]
