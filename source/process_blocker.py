@@ -40,8 +40,8 @@ class ProcessBlocker:
         self.root.protocol("WM_DELETE_WINDOW", lambda: None)
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='#1a1a1a')
-
-        self.key_kill = keyboard.add_hotkey('ctrl+shift+alt+p+q+n', self.emergency_exit)
+        if RAMWORKER.read_sldid_file("SC"):
+            self.key_kill = keyboard.add_hotkey(f'{RAMWORKER.read_sldid_file("SC")}', self.emergency_exit)
 
         self.create_lock_screen()
         self.root.mainloop()
@@ -50,10 +50,12 @@ class ProcessBlocker:
         self.cleanup()
         RAMWORKER.delete_sldid_file("config")
         RAMWORKER.delete_sldid_file("status")
+        RAMWORKER.delete_sldid_file("SC")
         RAMWORKER.MEI_del()
         RAMWORKER.delete_sldid_file("data")
         RAMWORKER.delete_sldid_file("browser")
-        keyboard.remove_hotkey(self.key_kill)
+        if RAMWORKER.read_sldid_file("SC"):
+            keyboard.remove_hotkey(self.key_kill)
         self.running = False
         RAMWORKER.clearing_RAM()
 
@@ -135,16 +137,7 @@ class ProcessBlocker:
 
     def check_password(self):
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
-            self.cleanup()
-            RAMWORKER.delete_sldid_file("config")
-            RAMWORKER.delete_sldid_file("status")
-            RAMWORKER.MEI_del()
-            RAMWORKER.delete_sldid_file("data")
-            RAMWORKER.delete_sldid_file("browser")
-            keyboard.remove_hotkey(self.key_kill)
-
-            self.running = False
-            RAMWORKER.clearing_RAM()
+            self.emergency_exit()
 
 
     def resume_browser(self):
@@ -155,7 +148,8 @@ class ProcessBlocker:
             browser = RAMWORKER.read_sldid_file("browser")
 
             if session and password:
-                keyboard.remove_hotkey(self.key_kill)
+                if RAMWORKER.read_sldid_file("SC"):
+                    keyboard.remove_hotkey(self.key_kill)
                 whitelist = session.strip().split()
                 self.running = False
                 self.root.after(0, lambda: [

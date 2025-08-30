@@ -543,7 +543,6 @@ class App:
 
 
 def main(browser_type):
-
     RAMWORKER.write_sldid_file("browser", browser_type)
     main_window = Tk()
     main_window.lift()
@@ -554,6 +553,7 @@ def main(browser_type):
     whitelisted_domains = []
     switch_info = False
     unlock_password = ""
+    secret_combo = ""
 
     main_window.configure(bg='#f0f2f5')
 
@@ -710,6 +710,140 @@ def main(browser_type):
             domain_label.config(text="Придумайте надёжный пароль\nдля отключения программы")
             next_button.pack(pady=(0, 5))
 
+    def set_unlock_password():
+        nonlocal whitelisted_domains, unlock_password, checkbox_var
+        if switch_info:
+            whitelisted_domains = RAMWORKER.read_sldid_file("session").split()
+        unlock_password = domain_entry.get()
+        if not unlock_password:
+            ctypes.windll.user32.MessageBoxW(0, "Вы не ввели пароль", "Ошибка", 0x0000 | 0x0010 | 0x1000)
+        else:
+            domain_entry.delete(0, END)
+            prompt_for_secret_combo()
+
+    def prompt_for_secret_combo():
+        valid_keys = [
+            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+            'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
+            'shift', 'ctrl', 'alt'
+        ]
+        domain_label.config(
+            text="Введите секретную комбинацию клавиш для выхода\n(минимум 5 клавиш через +)\nИли нажмите 'ОТКАЗАТЬСЯ'")
+        next_button.config(text="ДОБАВИТЬ КОМБИНАЦИЮ",
+                           command=set_secret_combo)
+
+
+        for widget in buttons_frame.winfo_children():
+            if widget not in [next_button]:
+                widget.destroy()
+        skip_button = Button(buttons_frame,
+                             text="ОТКАЗАТЬСЯ",
+                             font=("Arial", 14, 'bold'),
+                             command=skip_secret_combo,
+                             bg="red",
+                             fg="white",
+                             activebackground="red",
+                             activeforeground="white",
+                             bd=0,
+                             relief=FLAT,
+                             padx=20,
+                             pady=10)
+        check_allowed = Button(buttons_frame,
+                           text="посмотреть одобренные клавиши",
+                           bg="green",
+                           bd=0,
+                           relief=FLAT,
+                           padx=20,
+                           pady=10,
+                           activebackground="green",
+                           activeforeground="white",
+                           font=("Arial", 14, 'bold'),
+                           fg="white",
+                           command=lambda : ctypes.windll.user32.MessageBoxW(0, f"{' '.join(valid_keys)}", "одобренные клавиши",0)
+                           )
+        exit_butn = Button(buttons_frame,
+                           text="ЗАКРЫТЬ ПРИЛОЖЕНИЕ",
+                           bg="#f44336",
+                           bd=0,
+                           relief=FLAT,
+                           padx=20,
+                           pady=10,
+                           activebackground="#f44336",
+                           activeforeground="white",
+                           font=("Arial", 14, 'bold'),
+                           fg="white",
+                           command=lambda : exit()
+                           )
+
+        skip_button.pack(pady=(0, 10), fill=X)
+        next_button.pack(pady=(0, 10), fill=X)
+        check_allowed.pack(pady=(0, 10), fill=X)
+        exit_butn.pack(pady=(0, 10), fill=X)
+
+
+    def validate_key_combo(combo):
+        valid_keys = {
+            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+            'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+            'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
+            'shift', 'ctrl', 'alt'
+        }
+
+        keys = combo.lower().split('+')
+        if len(keys) != len(set(keys)):
+            return False
+
+        for key in keys:
+            if key.strip() not in valid_keys:
+                return False
+        return True
+
+    def set_secret_combo():
+        nonlocal secret_combo
+        combo_input = domain_entry.get().strip()
+
+        if not combo_input:
+            ctypes.windll.user32.MessageBoxW(0, "Введите комбинацию клавиш", "Ошибка", 0x0000 | 0x0010 | 0x1000)
+            return
+
+        if '+' not in combo_input:
+            combo_input = combo_input.replace(' ', '+')
+
+        keys = combo_input.split('+')
+        if len(keys) < 5:
+            ctypes.windll.user32.MessageBoxW(0, "Комбинация должна содержать минимум 5 клавиш", "Ошибка",
+                                             0x0000 | 0x0010 | 0x1000)
+            return
+
+        if len(keys) != len(set(keys)):
+            ctypes.windll.user32.MessageBoxW(0, "Комбинация содержит повторяющиеся клавиши", "Ошибка",
+                                             0x0000 | 0x0010 | 0x1000)
+            return
+
+        if not validate_key_combo(combo_input):
+            ctypes.windll.user32.MessageBoxW(0, "Комбинация содержит недопустимые клавиши", "Ошибка",
+                                             0x0000 | 0x0010 | 0x1000)
+            return
+
+        secret_combo = combo_input
+        RAMWORKER.write_sldid_file("SC", secret_combo.lower())
+        finalize_setup()
+
+    def skip_secret_combo():
+        finalize_setup()
+
+    def finalize_setup():
+        nonlocal whitelisted_domains, unlock_password, checkbox_var
+        time_limit = RAMWORKER.read_sldid_file("config")
+        main_window.destroy()
+        write_session(whitelisted_domains)
+        if not RAMWORKER.read_sldid_file("config"):
+            RAMWORKER.write_sldid_file("status", str(checkbox_var.get()))
+        App(whitelisted_domains, unlock_password, time_limit, browser_type, False)
+
     def write_session(whitelist):
         RAMWORKER.write_sldid_file("session", " ".join(whitelist))
 
@@ -719,40 +853,25 @@ def main(browser_type):
         else:
             prompt_for_password_setup(True)
 
-    def set_unlock_password():
-        nonlocal whitelisted_domains, unlock_password, checkbox_var
-        if switch_info:
-            whitelisted_domains = RAMWORKER.read_sldid_file("session").split()
-        time_limit = RAMWORKER.read_sldid_file("config")
-        unlock_password = domain_entry.get()
-        if not unlock_password:
-            ctypes.windll.user32.MessageBoxW(0, "Вы не ввели пароль", "Ошибка", 0x0000 | 0x0010 | 0x1000)
-        else:
-            main_window.destroy()
-            write_session(whitelisted_domains)
-            if not RAMWORKER.read_sldid_file("config"):
-                RAMWORKER.write_sldid_file("status", str(checkbox_var.get()))
-            App(whitelisted_domains, unlock_password, time_limit, browser_type, False)
-
     if not RAMWORKER.read_sldid_file("config"):
         style = ttk.Style()
         style.theme_use('alt')
 
         style.configure('TCheckbutton',
-                    font=('Arial', 15),
-                    indicatorsize=16,
-                    padding=5,
-                    background='white',
-                    foreground='black'
-                    )
+                        font=('Arial', 15),
+                        indicatorsize=16,
+                        padding=5,
+                        background='white',
+                        foreground='black'
+                        )
 
         checkbox = ttk.Checkbutton(
-        buttons_frame,
-        text="Разрешить восстанавливать браузер",
-        variable=checkbox_var,
-        style='TCheckbutton',
-        takefocus=0
-    )
+            buttons_frame,
+            text="Разрешить восстанавливать браузер",
+            variable=checkbox_var,
+            style='TCheckbutton',
+            takefocus=0
+        )
 
         checkbox.pack(pady=5, anchor='w')
 
