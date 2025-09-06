@@ -787,7 +787,7 @@ def main(browser_type):
                            activeforeground="white",
                            font=("Arial", 14, 'bold'),
                            fg="white",
-                           command=lambda: exit()
+                           command=lambda: main_window.destroy()
                            )
 
         skip_button.pack(pady=(0, 10), fill=X)
