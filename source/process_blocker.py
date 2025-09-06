@@ -18,16 +18,23 @@ class ProcessBlocker:
         self.is_notrestarted = is_notrestarted
         self.running = True
         self.blocked_apps = [
-            "msedge.exe", "WinStore.App.exe","chrome.exe", "firefox.exe",
-            "opera.exe", "yandex.exe", "iexplore.exe",
-            "taskmgr.exe", "powershell.exe",
-            "regedit.exe", "mmc.exe", "control.exe",
-            "roblox.exe", "minecraft.exe", "tlauncher.exe",
-            "rulauncher.exe", "javaw.exe", "java.exe",
-            "discord.exe", "steam.exe", "epicgameslauncher.exe",
-            "battle.net.exe", "telegram.exe", "viber.exe",
-            "browser.exe", "cmd.exe", "powershell.exe","notepad.exe","wordpad.exe","WINWORD.exe"
-        ]
+    "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
+    "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
+    "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
+    "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
+    "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe", "WinStore.App.exe",
+    "ida.exe", "ida64.exe", "x64dbg.exe", "x32dbg.exe", "ollydbg.exe", "windbg.exe",
+    "windbgx.exe", "ghidra.exe", "radare2.exe", "cheatengine.exe", "immunitydebugger.exe",
+    "procexp.exe", "procexp64.exe", "processhacker.exe", "processhacker2.exe", "procmon.exe",
+    "procmon64.exe", "vmmap.exe", "rammap.exe", "handle.exe", "listdlls.exe",
+    "pwsh.exe", "wsl.exe", "bash.exe", "ubuntu.exe", "debian.exe", "kali.exe", "ssh.exe",
+    "putty.exe", "kitty.exe", "cygwin.exe", "mingw.exe", "msys2.exe",
+    "wireshark.exe", "tshark.exe", "nmap.exe", "netcat.exe", "nc.exe", "tcpdump.exe",
+    "msconfig.exe", "regedt32.exe", "autoruns.exe", "autorunsc.exe", "services.exe",
+    "tasklist.exe", "systeminfo.exe", "whoami.exe", "net.exe", "ipconfig.exe",
+    "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
+    "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe"
+]
 
         self.monitor_thread = threading.Thread(target=self.monitor_processes, daemon=True).start()
 
