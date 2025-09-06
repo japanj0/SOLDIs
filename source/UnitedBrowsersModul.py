@@ -386,7 +386,7 @@ class App:
     def enforce_security_restrictions(self):
         while self.is_running:
             try:
-                if self.browser_driver.title!="SoldiSecurity":
+                if self.browser_driver.title != "SoldiSecurity":
                     self.browser_driver.execute_script(f"document.title = 'SoldiSecurity';")
                 self.terminate_unauthorized_apps()
                 self.terminate_explorer_safelly()
@@ -415,24 +415,24 @@ class App:
             pass
 
     def terminate_unauthorized_apps(self):
-        forbidden  = [
-    "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
-    "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
-    "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
-    "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
-    "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe", "WinStore.App.exe",
-    "ida.exe", "ida64.exe", "x64dbg.exe", "x32dbg.exe", "ollydbg.exe", "windbg.exe",
-    "windbgx.exe", "ghidra.exe", "radare2.exe", "cheatengine.exe", "immunitydebugger.exe",
-    "procexp.exe", "procexp64.exe", "processhacker.exe", "processhacker2.exe", "procmon.exe",
-    "procmon64.exe", "vmmap.exe", "rammap.exe", "handle.exe", "listdlls.exe",
-    "pwsh.exe", "wsl.exe", "bash.exe", "ubuntu.exe", "debian.exe", "kali.exe", "ssh.exe",
-    "putty.exe", "kitty.exe", "cygwin.exe", "mingw.exe", "msys2.exe",
-    "wireshark.exe", "tshark.exe", "nmap.exe", "netcat.exe", "nc.exe", "tcpdump.exe",
-    "msconfig.exe", "regedt32.exe", "autoruns.exe", "autorunsc.exe", "services.exe",
-    "tasklist.exe", "systeminfo.exe", "whoami.exe", "net.exe", "ipconfig.exe",
-    "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
-    "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe"
-]
+        forbidden = [
+            "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
+            "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
+            "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
+            "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
+            "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe", "WinStore.App.exe",
+            "ida.exe", "ida64.exe", "x64dbg.exe", "x32dbg.exe", "ollydbg.exe", "windbg.exe",
+            "windbgx.exe", "ghidra.exe", "radare2.exe", "cheatengine.exe", "immunitydebugger.exe",
+            "procexp.exe", "procexp64.exe", "processhacker.exe", "processhacker2.exe", "procmon.exe",
+            "procmon64.exe", "vmmap.exe", "rammap.exe", "handle.exe", "listdlls.exe",
+            "pwsh.exe", "wsl.exe", "bash.exe", "ubuntu.exe", "debian.exe", "kali.exe", "ssh.exe",
+            "putty.exe", "kitty.exe", "cygwin.exe", "mingw.exe", "msys2.exe",
+            "wireshark.exe", "tshark.exe", "nmap.exe", "netcat.exe", "nc.exe", "tcpdump.exe",
+            "msconfig.exe", "regedt32.exe", "autoruns.exe", "autorunsc.exe", "services.exe",
+            "tasklist.exe", "systeminfo.exe", "whoami.exe", "net.exe", "ipconfig.exe",
+            "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
+            "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe"
+        ]
         current = {
             "chrome": "chrome.exe",
             "edge": "msedge.exe",
@@ -743,10 +743,9 @@ def main(browser_type):
             'shift', 'ctrl', 'alt'
         ]
         domain_label.config(
-            text="Введите секретную комбинацию клавиш для выхода\n(минимум 5 клавиш через +)\nИли нажмите 'ОТКАЗАТЬСЯ'")
+            text="Введите секретную комбинацию клавиш для выхода\n(5 клавиш через +)\nИли нажмите 'ОТКАЗАТЬСЯ'")
         next_button.config(text="ДОБАВИТЬ КОМБИНАЦИЮ",
                            command=set_secret_combo)
-
 
         for widget in buttons_frame.winfo_children():
             if widget not in [next_button]:
@@ -764,18 +763,19 @@ def main(browser_type):
                              padx=20,
                              pady=10)
         check_allowed = Button(buttons_frame,
-                           text="посмотреть одобренные клавиши",
-                           bg="green",
-                           bd=0,
-                           relief=FLAT,
-                           padx=20,
-                           pady=10,
-                           activebackground="green",
-                           activeforeground="white",
-                           font=("Arial", 14, 'bold'),
-                           fg="white",
-                           command=lambda : ctypes.windll.user32.MessageBoxW(0, f"{' '.join(valid_keys)}", "одобренные клавиши",0)
-                           )
+                               text="посмотреть одобренные клавиши",
+                               bg="green",
+                               bd=0,
+                               relief=FLAT,
+                               padx=20,
+                               pady=10,
+                               activebackground="green",
+                               activeforeground="white",
+                               font=("Arial", 14, 'bold'),
+                               fg="white",
+                               command=lambda: ctypes.windll.user32.MessageBoxW(0, f"{' '.join(valid_keys)}",
+                                                                                "одобренные клавиши", 0)
+                               )
         exit_butn = Button(buttons_frame,
                            text="ЗАКРЫТЬ ПРИЛОЖЕНИЕ",
                            bg="#f44336",
@@ -787,14 +787,13 @@ def main(browser_type):
                            activeforeground="white",
                            font=("Arial", 14, 'bold'),
                            fg="white",
-                           command=lambda : exit()
+                           command=lambda: exit()
                            )
 
         skip_button.pack(pady=(0, 10), fill=X)
         next_button.pack(pady=(0, 10), fill=X)
         check_allowed.pack(pady=(0, 10), fill=X)
         exit_butn.pack(pady=(0, 10), fill=X)
-
 
     def validate_key_combo(combo):
         valid_keys = {
@@ -826,8 +825,8 @@ def main(browser_type):
             combo_input = combo_input.replace(' ', '+')
 
         keys = combo_input.split('+')
-        if len(keys) < 5:
-            ctypes.windll.user32.MessageBoxW(0, "Комбинация должна содержать минимум 5 клавиш", "Ошибка",
+        if len(keys) < 5 or len(keys) > 5:
+            ctypes.windll.user32.MessageBoxW(0, "Комбинация должна содержать ровно 5 клавиш", "Ошибка",
                                              0x0000 | 0x0010 | 0x1000)
             return
 

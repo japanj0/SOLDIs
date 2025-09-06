@@ -194,9 +194,9 @@ def Firefox():
 
             for proc in psutil.process_iter(['pid', 'name']):
                 if proc.info['name'] == "firefox.exe":
-                        proc.kill()
-            win.after(0, lambda: [win.destroy(),UnitedBrowsersModul.main("firefox") ])
-        except FileNotFoundError :
+                    proc.kill()
+            win.after(0, lambda: [win.destroy(), UnitedBrowsersModul.main("firefox")])
+        except FileNotFoundError:
             win.after(0, lambda: show_error(f"Firefox не установлен на вашем ПК"))
         except Exception:
             win.after(0, lambda: show_error(f"Произошла неизвестная ошибка"))
@@ -210,19 +210,20 @@ def Chrome():
     def chrome_thread():
         time.sleep(2)
         try:
-                os.startfile("chrome")
+            os.startfile("chrome")
 
-                subprocess.Popen(
-                    "taskkill /f /im chrome.exe",
-                    creationflags=subprocess.CREATE_NO_WINDOW,
-                    shell=True
-                )
+            subprocess.Popen(
+                "taskkill /f /im chrome.exe",
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                shell=True
+            )
 
-                win.after(0, lambda: [win.destroy(), UnitedBrowsersModul.main("chrome")])
+            win.after(0, lambda: [win.destroy(), UnitedBrowsersModul.main("chrome")])
         except FileNotFoundError:
-                win.after(0, lambda: show_error(f"Chrome не установлен на вашем ПК"))
+            win.after(0, lambda: show_error(f"Chrome не установлен на вашем ПК"))
         except Exception:
-                win.after(0, lambda: show_error(f"Произошла неизвестная ошибка"))
+            win.after(0, lambda: show_error(f"Произошла неизвестная ошибка"))
+
     threading.Thread(target=chrome_thread, daemon=True).start()
 
 
@@ -256,12 +257,12 @@ def create_main_interface():
         if not new_text:
             return True
         if (len(new_text) == 1 and new_text == "0") or \
-                (len(new_text) > 1 and new_text[0] == "0") :
-
+                (len(new_text) > 1 and new_text[0] == "0"):
             return False
         return new_text.isdigit()
+
     def write_some():
-        if time_entry.get()!="":
+        if time_entry.get() != "":
             RAMWORKER.write_sldid_file("config", time_entry.get())
             time_entry.delete(0, 'end')
             confirm_button.destroy()
@@ -271,7 +272,6 @@ def create_main_interface():
             button_firefox.grid(row=0, column=0, padx=30, pady=20, sticky="nsew")
             button_edge.grid(row=0, column=1, padx=30, pady=20, sticky="nsew")
             button_chrome.grid(row=0, column=2, padx=30, pady=20, sticky="nsew")
-
 
     clear_window()
 
@@ -340,8 +340,6 @@ def create_main_interface():
         confirm_button.pack(pady=(10, 10), expand=True)
 
 
-
-
 win = Tk()
 win.title("soldi")
 win.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
@@ -390,7 +388,7 @@ else:
     if is_scheduled_launch():
         sys.exit()
     else:
-        RAMWORKER.write_sldid_file("config","")
+        RAMWORKER.write_sldid_file("config", "")
         require_admin()
         create_main_interface()
         win.mainloop()

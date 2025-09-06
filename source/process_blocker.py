@@ -18,23 +18,23 @@ class ProcessBlocker:
         self.is_notrestarted = is_notrestarted
         self.running = True
         self.blocked_apps = [
-    "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
-    "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
-    "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
-    "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
-    "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe", "WinStore.App.exe",
-    "ida.exe", "ida64.exe", "x64dbg.exe", "x32dbg.exe", "ollydbg.exe", "windbg.exe",
-    "windbgx.exe", "ghidra.exe", "radare2.exe", "cheatengine.exe", "immunitydebugger.exe",
-    "procexp.exe", "procexp64.exe", "processhacker.exe", "processhacker2.exe", "procmon.exe",
-    "procmon64.exe", "vmmap.exe", "rammap.exe", "handle.exe", "listdlls.exe",
-    "pwsh.exe", "wsl.exe", "bash.exe", "ubuntu.exe", "debian.exe", "kali.exe", "ssh.exe",
-    "putty.exe", "kitty.exe", "cygwin.exe", "mingw.exe", "msys2.exe",
-    "wireshark.exe", "tshark.exe", "nmap.exe", "netcat.exe", "nc.exe", "tcpdump.exe",
-    "msconfig.exe", "regedt32.exe", "autoruns.exe", "autorunsc.exe", "services.exe",
-    "tasklist.exe", "systeminfo.exe", "whoami.exe", "net.exe", "ipconfig.exe",
-    "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
-    "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe"
-]
+            "chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "roblox.exe", "minecraft.exe",
+            "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
+            "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
+            "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
+            "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe", "WinStore.App.exe",
+            "ida.exe", "ida64.exe", "x64dbg.exe", "x32dbg.exe", "ollydbg.exe", "windbg.exe",
+            "windbgx.exe", "ghidra.exe", "radare2.exe", "cheatengine.exe", "immunitydebugger.exe",
+            "procexp.exe", "procexp64.exe", "processhacker.exe", "processhacker2.exe", "procmon.exe",
+            "procmon64.exe", "vmmap.exe", "rammap.exe", "handle.exe", "listdlls.exe",
+            "pwsh.exe", "wsl.exe", "bash.exe", "ubuntu.exe", "debian.exe", "kali.exe", "ssh.exe",
+            "putty.exe", "kitty.exe", "cygwin.exe", "mingw.exe", "msys2.exe",
+            "wireshark.exe", "tshark.exe", "nmap.exe", "netcat.exe", "nc.exe", "tcpdump.exe",
+            "msconfig.exe", "regedt32.exe", "autoruns.exe", "autorunsc.exe", "services.exe",
+            "tasklist.exe", "systeminfo.exe", "whoami.exe", "net.exe", "ipconfig.exe",
+            "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
+            "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe"
+        ]
 
         self.monitor_thread = threading.Thread(target=self.monitor_processes, daemon=True).start()
 
@@ -65,7 +65,6 @@ class ProcessBlocker:
             keyboard.remove_hotkey(self.key_kill)
         self.running = False
         RAMWORKER.clearing_RAM()
-
 
     def cleanup(self):
         temp_dir = r"C:\Temp"
@@ -115,23 +114,24 @@ class ProcessBlocker:
                                   padx=30,
                                   pady=10)
         submit_button.pack()
-        if RAMWORKER.read_sldid_file("status")=="True" and self.is_notrestarted:
+        if RAMWORKER.read_sldid_file("status") == "True" and self.is_notrestarted:
             resume_button = tk.Button(content_frame,
-                                  text="ВОЗОБНОВИТЬ\nБРАУЗЕР",
-                                  font=("Arial", 16, 'bold'),
-                                  command=self.resume_browser,
-                                  bg="#4b6cb7",
-                                  fg="white",
-                                  activebackground="#3a5a99",
-                                  activeforeground="white",
-                                  bd=0,
-                                  relief='flat',
-                                  padx=29,
-                                  pady=10)
+                                      text="ВОЗОБНОВИТЬ\nБРАУЗЕР",
+                                      font=("Arial", 16, 'bold'),
+                                      command=self.resume_browser,
+                                      bg="#4b6cb7",
+                                      fg="white",
+                                      activebackground="#3a5a99",
+                                      activeforeground="white",
+                                      bd=0,
+                                      relief='flat',
+                                      padx=29,
+                                      pady=10)
             resume_button.pack(pady=(10, 0))
 
         separator = tk.Frame(content_frame, height=2, bg="#4b6cb7", bd=0)
         separator.pack(fill='x', pady=20)
+
     def terminate_explorer_safelly(self):
         try:
             def callback(hwnd, _):
@@ -145,7 +145,6 @@ class ProcessBlocker:
     def check_password(self):
         if hashlib.sha256(self.pass_entry.get().encode('utf-8')).hexdigest() == self.password:
             self.emergency_exit()
-
 
     def resume_browser(self):
         try:
