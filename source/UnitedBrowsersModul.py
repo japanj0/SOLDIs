@@ -257,12 +257,6 @@ class App:
                 }
             }
         </style>
-        <script>
-            window.open = function() {
-                alert("Открытие новых окон запрещено.");
-                return null;
-            };
-        </script>
     </head>
     <body>
         <div class="container">

@@ -31,12 +31,21 @@ def is_browser_installed(browser_name):
 def require_admin():
     try:
         if ctypes.windll.shell32.IsUserAnAdmin():
-            return True
+            return
         else:
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, None, 1)
-            sys.exit()
-    except Exception as e:
-        print(f"Ошибка при запросе прав администратора: {e}")
+            res = ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, None, 1)
+            if res <= 32:
+                win.destroy()
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    f"Не удалось получить права администратора.",
+                    "Ошибка прав доступа",
+                    0x10 | 0x0
+                )
+                sys.exit()
+            else:
+                sys.exit()
+    except Exception:
         sys.exit()
 
 
