@@ -9,12 +9,13 @@ import win32com.client
 _CIPHER = None
 
 
-def clearing_RAM():
-    drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe', 'msedge.exe', 'python.exe']
-    if getattr(sys, 'frozen', False):
-        executable_path = sys.executable
-        executable_name = os.path.basename(executable_path)
-        drivers.append(executable_name)
+def clearing_RAM(drivers=None):
+    if drivers == None:
+        drivers = ['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe', 'msedge.exe', 'python.exe']
+        if getattr(sys, 'frozen', False):
+            executable_path = sys.executable
+            executable_name = os.path.basename(executable_path)
+            drivers.append(executable_name)
 
     for proc in psutil.process_iter(['name']):
         if proc.info['name'] in drivers:
@@ -22,7 +23,7 @@ def clearing_RAM():
                 proc.terminate()
             except Exception:
                 try:
-                    proc.kill()
+                    proc.terminate()
                 except Exception:
                     pass
 
@@ -75,7 +76,7 @@ def add_to_autostart(app_name: str) -> bool:
 def kill_process_by_name(process_name):
     for proc in psutil.process_iter(['pid', 'name']):
         if proc.info['name'] == process_name:
-            proc.kill()
+            proc.terminate()
 
 
 def MEI_del():

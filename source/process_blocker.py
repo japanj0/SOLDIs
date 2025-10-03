@@ -35,7 +35,7 @@ class ProcessBlocker:
             "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
             "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe"
         ]
-
+        RAMWORKER.clearing_RAM(['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe'])
         self.monitor_thread = threading.Thread(target=self.monitor_processes, daemon=True).start()
 
         self.init_ui()
@@ -171,7 +171,7 @@ class ProcessBlocker:
             for proc in psutil.process_iter(['name']):
                 try:
                     if proc.info['name'].lower() in self.blocked_apps:
-                        proc.kill()
+                        proc.terminate()
                 except Exception:
                     pass
 

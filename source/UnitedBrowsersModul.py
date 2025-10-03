@@ -322,33 +322,6 @@ class App:
             options.add_argument("--app-name=cara")
             self.browser_driver = webdriver.Edge(options=options)
         elif self.browser_type == "firefox":
-            def get_latest_geckodriver_url():
-                response = requests.get("https://api.github.com/repos/mozilla/geckodriver/releases/latest")
-                response.raise_for_status()
-                assets = response.json()["assets"]
-                for asset in assets:
-                    if "win64.zip" in asset["name"]:
-                        return asset["browser_download_url"]
-
-            def setup_geckodriver():
-                temp_dir = os.path.join(os.environ["TEMP"], "geckodriver")
-                os.makedirs(temp_dir, exist_ok=True)
-                driver_path = os.path.join(temp_dir, "geckodriver.exe")
-                if os.path.exists(driver_path):
-                    return driver_path
-                download_url = get_latest_geckodriver_url()
-                zip_path = os.path.join(temp_dir, "geckodriver.zip")
-                with requests.get(download_url, stream=True) as r:
-                    r.raise_for_status()
-                    with open(zip_path, "wb") as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    zip_ref.extract("geckodriver.exe", temp_dir)
-                os.remove(zip_path)
-                return driver_path
-
-            path = setup_geckodriver()
             options = FirefoxOptions()
             options.page_load_strategy = "none"
             options.set_preference("remote-debugging-port", 9222)
@@ -359,7 +332,7 @@ class App:
             options.add_argument("--ignore-certificate-errors")
             options.set_preference("app.update.auto", False)
             options.set_preference("app.update.enabled", False)
-            service = FirefoxService(executable_path=path)
+            service = FirefoxService()
             self.browser_driver = webdriver.Firefox(options=options, service=service)
         self.browser_driver.implicitly_wait(3)
         WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
@@ -372,16 +345,16 @@ class App:
         if self.browser_driver is None:
             return False
         try:
-            _ = self.browser_driver.window_handles
+            if self.browser_driver.title != "SoldiSecurity":
+                self.browser_driver.execute_script(f"document.title = 'SoldiSecurity';")
             return True
-        except WebDriverException:
+        except (WebDriverException, Exception) as e:
+            self.browser_driver = None
             return False
 
     def enforce_security_restrictions(self):
         while self.is_running:
             try:
-                if self.browser_driver.title != "SoldiSecurity":
-                    self.browser_driver.execute_script(f"document.title = 'SoldiSecurity';")
                 self.terminate_unauthorized_apps()
                 self.terminate_explorer_safelly()
                 self.terminate_unauthorized_instances()
