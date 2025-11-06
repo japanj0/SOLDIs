@@ -22,7 +22,7 @@ class ProcessBlocker:
             "yandex.exe", "tlauncher.exe", "browser.exe", "rulauncher.exe", "java.exe", "javaw.exe",
             "iexplore.exe", "taskmgr.exe", "powershell.exe", "regedit.exe", "mmc.exe", "control.exe",
             "discord.exe", "steam.exe", "epicgameslauncher.exe", "battle.net.exe", "telegram.exe",
-            "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WINWORD.exe", "WinStore.App.exe",
+            "viber.exe", "cmd.exe", "notepad.exe", "wordpad.exe", "WinStore.App.exe",
             "ida.exe", "ida64.exe", "x64dbg.exe", "x32dbg.exe", "ollydbg.exe", "windbg.exe",
             "windbgx.exe", "ghidra.exe", "radare2.exe", "cheatengine.exe", "immunitydebugger.exe",
             "procexp.exe", "procexp64.exe", "processhacker.exe", "processhacker2.exe", "procmon.exe",
@@ -33,7 +33,8 @@ class ProcessBlocker:
             "msconfig.exe", "regedt32.exe", "autoruns.exe", "autorunsc.exe", "services.exe",
             "tasklist.exe", "systeminfo.exe", "whoami.exe", "net.exe", "ipconfig.exe",
             "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
-            "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe"
+            "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe",
+            "SystemSettings.exe"
         ]
         RAMWORKER.clearing_RAM(['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe'])
         self.monitor_thread = threading.Thread(target=self.monitor_processes, daemon=True).start()
@@ -168,11 +169,14 @@ class ProcessBlocker:
     def monitor_processes(self):
         while self.running:
             self.terminate_explorer_safelly()
-            for proc in psutil.process_iter(['name']):
+            for proc in psutil.process_iter(['pid', 'name', 'exe']):
                 try:
-                    if proc.info['name'].lower() in self.blocked_apps:
-                        proc.terminate()
-                except Exception:
-                    pass
+                    if proc.info['name'].lower() in [f.lower() for f in self.blocked_apps]:
+                        try:
+                            proc.terminate()
+                        except (psutil.AccessDenied, psutil.NoSuchProcess):
+                            continue
+                except:
+                    continue
 
             time.sleep(1)
