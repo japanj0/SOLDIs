@@ -17,30 +17,31 @@ from urllib.parse import *
 from tkinter import ttk
 import idna
 import hashlib
-import zipfile
-import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.firefox.service import Service as FirefoxService
-
-
 class App:
     def __init__(self, whitelisted_domains, unlock_password, time, browser_type, flag):
+        self.driver_lock = threading.Lock()
+        self.is_running = True
+
         if time != "":
             self.remaining_time = int(time) * 60
+        else:
+            self.remaining_time = 0
+
         self.flag = flag
         self.whitelisted_domains = whitelisted_domains
         self.unlock_password = unlock_password
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.html_path = os.path.join(self.script_dir, "links.html")
-        self.main_window = Tk()
-        self.main_window.withdraw()
         self.time = time
         self.browser_type = browser_type
+        self.browser_driver = None
+        self.browser_lock_mutex = None
         self.initialize_app_state()
-        self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
 
     def format_time(self, seconds):
         hours, remainder = divmod(seconds, 3600)
@@ -48,49 +49,57 @@ class App:
         return f"{hours:02d}:{mins:02d}:{secs:02d}"
 
     def update_timer(self):
+        if not self.is_running:
+            return
+
         if self.remaining_time > 0:
             self.remaining_time -= 1
             time_str = self.format_time(self.remaining_time)
-            self.timer_label.config(fg="black", font=("Arial", 23, "bold"))
-            self.timer_label.config(text=f"До принудительного закрытия осталось:\n{time_str}")
-            self.main_window.after(1000, self.update_timer)
+            if hasattr(self, 'timer_label') and self.timer_label.winfo_exists():
+                self.timer_label.config(text=f"До принудительного закрытия осталось:\n{time_str}")
+                self.main_window.after(1000, self.update_timer)
         else:
-            process = {
-                "chrome": "chrome.exe",
-                "edge": "msedge.exe",
-                "firefox": "firefox.exe"
-            }[self.browser_type]
-            RAMWORKER.kill_process_by_name(process)
+            self.safe_shutdown()
 
     def initialize_app_state(self):
-        self.browser_lock_mutex = None
-        self.browser_driver = None
-        self.is_running = True
         self.setup_browser_environment()
 
     def setup_browser_environment(self):
         if self.check_browser_process_running():
             return
+
         self.browser_lock_mutex = self.create_browser_lock_mutex()
         if not self.browser_lock_mutex:
             return
+
         self.local_page_url = self.generate_allowed_sites_html()
         self.launch_controlled_browser()
+
+        self.setup_gui()
+
+        if not self.flag:
+            RAMWORKER.write_sldid_file("data", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
+
+        self.first_thread = threading.Thread(target=self.monitor_browser_tabs, daemon=True)
+        self.second_thread = threading.Thread(target=self.enforce_security_restrictions, daemon=True)
+        self.first_thread.start()
+        self.second_thread.start()
+
+        self.main_window.mainloop()
+
+    def setup_gui(self):
         self.main_window = Tk()
         self.main_window.title("soldi")
         self.main_window.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
-        if not self.flag:
-            RAMWORKER.write_sldid_file("data", f"{hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()}")
         self.main_window.resizable(False, False)
-        self.main_window.iconify()
         self.main_window.protocol("WM_DELETE_WINDOW", self.handle_window_close)
-        self.first_thread = threading.Thread(target=self.monitor_browser_tabs, daemon=True).start()
-        self.second_thread = threading.Thread(target=self.enforce_security_restrictions, daemon=True).start()
+
         if self.time != "":
             self.timer_label = Label(self.main_window, text=self.format_time(self.remaining_time),
                                      font=("Arial", 20, "bold"), fg="green")
             self.timer_label.pack(pady=10)
             self.update_timer()
+
         self.button_back = Button(self.main_window,
                                   text="вернутся на главную страницу",
                                   font=("Arial", 20, "bold"),
@@ -100,9 +109,16 @@ class App:
                                   activeforeground="white",
                                   relief=FLAT,
                                   bd=0,
-                                  command=lambda: self.browser_driver.get(self.local_page_url))
+                                  command=self.return_to_main_page)
         self.button_back.pack()
-        self.main_window.mainloop()
+
+    def return_to_main_page(self):
+        with self.driver_lock:
+            if self.browser_driver:
+                try:
+                    self.browser_driver.get(self.local_page_url)
+                except Exception as e:
+                    print(f"Ошибка возврата на главную: {e}")
 
     def create_browser_lock_mutex(self):
         mutex_name = {
@@ -110,10 +126,8 @@ class App:
             "edge": "Global\\EdgeBrowserLock",
             "firefox": "Global\\FirefoxBrowserLock"
         }[self.browser_type]
-        self.mutex2 = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
-        if not self.mutex2:
-            return None
-        return self.mutex2
+        mutex = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+        return mutex
 
     def handle_window_close(self):
         pass
@@ -124,233 +138,237 @@ class App:
             "edge": "Global\\EdgeBrowserLock",
             "firefox": "Global\\FirefoxBrowserLock"
         }[self.browser_type]
-        self.mutex = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, mutex_name)
-        if self.mutex:
-            ctypes.windll.kernel32.CloseHandle(self.mutex)
+        mutex = ctypes.windll.kernel32.OpenMutexW(0x00100000, False, mutex_name)
+        if mutex:
+            ctypes.windll.kernel32.CloseHandle(mutex)
             return True
         return False
 
     def generate_allowed_sites_html(self):
         with open(self.html_path, "w", encoding="utf-8") as f:
             f.write("""<!DOCTYPE html>
-    <html lang="ru">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Каталог разрешённых сайтов</title>
-        <style>
-            * {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            }
+                <html lang="ru">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Каталог разрешённых сайтов</title>
+                    <style>
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        }
 
-            body {
-                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                min-height: 100vh;
-                padding: 40px 20px;
-                color: #333;
-            }
+                        body {
+                            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                            min-height: 100vh;
+                            padding: 40px 20px;
+                            color: #333;
+                        }
 
-            .container {
-                max-width: 1000px;
-                margin: 0 auto;
-                background: white;
-                border-radius: 15px;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-                padding: 40px;
-                position: relative;
-                overflow: hidden;
-            }
+                        .container {
+                            max-width: 1000px;
+                            margin: 0 auto;
+                            background: white;
+                            border-radius: 15px;
+                            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+                            padding: 40px;
+                            position: relative;
+                            overflow: hidden;
+                        }
 
-            .container::before {
-                content: "";
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 10px;
-                background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
-            }
+                        .container::before {
+                            content: "";
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 10px;
+                            background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
+                        }
 
-            h1 {
-                text-align: center;
-                margin-bottom: 30px;
-                color: #2c3e50;
-                font-size: 2.5rem;
-                position: relative;
-                padding-bottom: 15px;
-            }
+                        h1 {
+                            text-align: center;
+                            margin-bottom: 30px;
+                            color: #2c3e50;
+                            font-size: 2.5rem;
+                            position: relative;
+                            padding-bottom: 15px;
+                        }
 
-            h1::after {
-                content: "";
-                position: absolute;
-                bottom: 0;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 100px;
-                height: 3px;
-                background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
-                border-radius: 3px;
-            }
+                        h1::after {
+                            content: "";
+                            position: absolute;
+                            bottom: 0;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            width: 100px;
+                            height: 3px;
+                            background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
+                            border-radius: 3px;
+                        }
 
-            .description {
-                text-align: center;
-                margin-bottom: 40px;
-                font-size: 1.1rem;
-                color: #555;
-                line-height: 1.6;
-            }
+                        .description {
+                            text-align: center;
+                            margin-bottom: 40px;
+                            font-size: 1.1rem;
+                            color: #555;
+                            line-height: 1.6;
+                        }
 
-            .site-list {
-                list-style: none;
-                margin-bottom: 40px;
-            }
+                        .site-list {
+                            list-style: none;
+                            margin-bottom: 40px;
+                        }
 
-            .site-item {
-                margin-bottom: 15px;
-                transition: all 0.3s ease;
-            }
+                        .site-item {
+                            margin-bottom: 15px;
+                            transition: all 0.3s ease;
+                        }
 
-            .site-item:hover {
-                transform: translateX(10px);
-            }
+                        .site-item:hover {
+                            transform: translateX(10px);
+                        }
 
-            .site-link {
-                display: block;
-                padding: 15px 20px;
-                background: #f8f9fa;
-                border-radius: 8px;
-                text-decoration: none;
-                color: #2c3e50;
-                font-size: 1.2rem;
-                transition: all 0.3s ease;
-                border-left: 4px solid transparent;
-            }
+                        .site-link {
+                            display: block;
+                            padding: 15px 20px;
+                            background: #f8f9fa;
+                            border-radius: 8px;
+                            text-decoration: none;
+                            color: #2c3e50;
+                            font-size: 1.2rem;
+                            transition: all 0.3s ease;
+                            border-left: 4px solid transparent;
+                        }
 
-            .site-link:hover {
-                background: #e9ecef;
-                border-left: 4px solid #4b6cb7;
-                color: #4b6cb7;
-            }
+                        .site-link:hover {
+                            background: #e9ecef;
+                            border-left: 4px solid #4b6cb7;
+                            color: #4b6cb7;
+                        }
 
-            .footer {
-                text-align: center;
-                margin-top: 40px;
-                color: #777;
-                font-size: 0.9rem;
-            }
+                        .footer {
+                            text-align: center;
+                            margin-top: 40px;
+                            color: #777;
+                            font-size: 0.9rem;
+                        }
 
-            @media (max-width: 768px) {
-                .container {
-                    padding: 30px 20px;
-                }
+                        @media (max-width: 768px) {
+                            .container {
+                                padding: 30px 20px;
+                            }
 
-                h1 {
-                    font-size: 2rem;
-                }
+                            h1 {
+                                font-size: 2rem;
+                            }
 
-                .site-link {
-                    font-size: 1rem;
-                    padding: 12px 15px;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Разрешённые сайты</h1>
-            <p class="description">Вы можете посещать только эти веб-сайты. Нажмите на ссылку, чтобы перейти.</p>
-            <ul class="site-list">
-    """)
+                            .site-link {
+                                font-size: 1rem;
+                                padding: 12px 15px;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>Разрешённые сайты</h1>
+                        <p class="description">Вы можете посещать только эти веб-сайты. Нажмите на ссылку, чтобы перейти.</p>
+                        <ul class="site-list">
+                """)
             for site in self.whitelisted_domains:
                 f.write(
                     f'            <li class="site-item"><a href="https://{site}" target="_self" class="site-link">{site}</a></li>\n')
             f.write("""        </ul>
-            <div class="footer">
-                <p>Для выхода из программы закройте браузер и введите пароль администратора</p>
-            </div>
-        </div>
-    </body>
-    </html>""")
+                        <div class="footer">
+                            <p>Для выхода из программы закройте браузер и введите пароль администратора</p>
+                        </div>
+                    </div>
+                </body>
+                </html>""")
         return "file:///" + self.html_path.replace("\\", "/")
 
     def launch_controlled_browser(self):
-        if self.browser_driver is not None:
-            try:
-                self.browser_driver.quit()
-            except:
-                pass
         self.user_data_dir = f"C:\\Temp\\{self.browser_type.capitalize()}PythonProfile_{uuid.uuid4()}"
         os.makedirs(self.user_data_dir, exist_ok=True)
-        if self.browser_type == "chrome":
-            options = ChromeOptions()
-            options.page_load_strategy = "none"
-            options.add_argument("--remote-debugging-port=9222")
-            options.add_argument("--guest")
-            options.add_argument(f"--user-data-dir={self.user_data_dir}")
-            options.add_argument("--start-maximized")
-            options.add_argument("--no-default-browser-check")
-            options.add_argument("--no-first-run")
-            options.add_argument("--disable-extensions")
-            options.add_argument("--disable-popup-blocking")
-            options.add_argument("--disable-default-apps")
-            options.add_argument("--disable-infobars")
-            options.add_argument("--disable-session-crashed-bubble")
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option('useAutomationExtension', False)
-            self.browser_driver = webdriver.Chrome(options=options)
-        elif self.browser_type == "edge":
-            options = EdgeOptions()
-            options.page_load_strategy = "none"
-            options.add_argument("--remote-debugging-port=9222")
-            options.add_argument(f"--user-data-dir={self.user_data_dir}")
-            options.add_argument("--start-maximized")
-            options.add_argument("--no-first-run")
-            options.add_argument("--no-remote")
-            options.add_argument("--disable-extensions")
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_argument("--ignore-certificate-errors")
-            options.add_argument("--disable-infobars")
-            options.add_argument("--guest")
-            options.add_argument("--disable-notifications")
-            options.add_argument("--disable-sync")
-            options.add_argument("--disable-cloud-import")
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option('useAutomationExtension', False)
-            options.add_argument("--app-name=cara")
-            self.browser_driver = webdriver.Edge(options=options)
-        elif self.browser_type == "firefox":
-            options = FirefoxOptions()
-            options.page_load_strategy = "none"
-            options.set_preference("remote-debugging-port", 9222)
-            options.add_argument(f"--user-data-dir={self.user_data_dir}")
-            options.add_argument("--start-maximized")
-            options.add_argument("--no-remote")
-            options.add_argument("--new-instance")
-            options.add_argument("--ignore-certificate-errors")
-            options.set_preference("app.update.auto", False)
-            options.set_preference("app.update.enabled", False)
-            service = FirefoxService()
-            self.browser_driver = webdriver.Firefox(options=options, service=service)
-        self.browser_driver.implicitly_wait(3)
-        WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
-        self.browser_driver.get(self.local_page_url)
-        self.browser_driver.implicitly_wait(1)
-        self.browser_driver.maximize_window()
-        RAMWORKER.add_to_autostart("Soldi")
+
+        try:
+            if self.browser_type == "chrome":
+                options = ChromeOptions()
+                options.page_load_strategy = "none"
+                options.add_argument("--remote-debugging-port=9222")
+                options.add_argument("--guest")
+                options.add_argument(f"--user-data-dir={self.user_data_dir}")
+                options.add_argument("--start-maximized")
+                options.add_argument("--no-default-browser-check")
+                options.add_argument("--no-first-run")
+                options.add_argument("--disable-extensions")
+                options.add_argument("--disable-popup-blocking")
+                options.add_argument("--disable-default-apps")
+                options.add_argument("--disable-infobars")
+                options.add_argument("--disable-session-crashed-bubble")
+                options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                options.add_experimental_option('useAutomationExtension', False)
+                self.browser_driver = webdriver.Chrome(options=options)
+
+            elif self.browser_type == "edge":
+                options = EdgeOptions()
+                options.page_load_strategy = "none"
+                options.add_argument("--remote-debugging-port=9222")
+                options.add_argument(f"--user-data-dir={self.user_data_dir}")
+                options.add_argument("--start-maximized")
+                options.add_argument("--no-first-run")
+                options.add_argument("--no-remote")
+                options.add_argument("--disable-extensions")
+                options.add_argument("--disable-blink-features=AutomationControlled")
+                options.add_argument("--ignore-certificate-errors")
+                options.add_argument("--disable-infobars")
+                options.add_argument("--guest")
+                options.add_argument("--disable-notifications")
+                options.add_argument("--disable-sync")
+                options.add_argument("--disable-cloud-import")
+                options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                options.add_experimental_option('useAutomationExtension', False)
+                options.add_argument("--app-name=cara")
+                self.browser_driver = webdriver.Edge(options=options)
+
+            elif self.browser_type == "firefox":
+                options = FirefoxOptions()
+                options.page_load_strategy = "none"
+                options.set_preference("remote-debugging-port", 9222)
+                options.add_argument(f"--user-data-dir={self.user_data_dir}")
+                options.add_argument("--start-maximized")
+                options.add_argument("--no-remote")
+                options.add_argument("--new-instance")
+                options.add_argument("--ignore-certificate-errors")
+                options.set_preference("app.update.auto", False)
+                options.set_preference("app.update.enabled", False)
+                service = FirefoxService()
+                self.browser_driver = webdriver.Firefox(options=options, service=service)
+
+            self.browser_driver.implicitly_wait(3)
+            self.browser_driver.get(self.local_page_url)
+            WebDriverWait(self.browser_driver, 3).until(EC.number_of_windows_to_be(1))
+            self.browser_driver.maximize_window()
+            RAMWORKER.add_to_autostart("Soldi")
+
+        except Exception as e:
+            print(f"Ошибка запуска браузера: {e}")
+            self.browser_driver = None
 
     def verify_browser_process_active(self):
-        if self.browser_driver is None:
-            return False
-        try:
-            if self.browser_driver.title != "SoldiSecurity":
-                self.browser_driver.execute_script(f"document.title = 'SoldiSecurity';")
-            return True
-        except (WebDriverException, Exception) as e:
-            self.browser_driver = None
-            return False
+        with self.driver_lock:
+            if self.browser_driver is None:
+                return False
+            try:
+                current_url = self.browser_driver.current_url
+                return True
+            except (WebDriverException, Exception) as e:
+                print(f"Драйвер неактивен: {e}")
+                self.browser_driver = None
+                return False
 
     def enforce_security_restrictions(self):
         while self.is_running:
@@ -359,17 +377,21 @@ class App:
                 self.terminate_explorer_safelly()
                 self.terminate_unauthorized_instances()
                 if self.verify_browser_process_active():
-                    title = f"SoldiSecurity"
-                    browser_window = gw.getWindowsWithTitle(title)
-                    if browser_window:
-                        browser_window = browser_window[0]
-                        if browser_window.isMinimized:
-                            browser_window.restore()
-                        if not browser_window.isMaximized:
-                            browser_window.maximize()
-            except:
-                pass
-            time.sleep(1)
+                    try:
+                        browser_windows = gw.getWindowsWithTitle("")
+                        for window in browser_windows:
+                            if any(browser in window.title.lower() for browser in
+                                   ['chrome', 'edge', 'firefox', 'mozilla']):
+                                if window.isMinimized:
+                                    window.restore()
+                                if not window.isMaximized:
+                                    window.maximize()
+                    except Exception as e:
+                        print(f"Ошибка управления окном: {e}")
+
+            except Exception as e:
+                print(f"Ошибка в enforce_security_restrictions: {e}")
+            time.sleep(0.4)
 
     def terminate_explorer_safelly(self):
         try:
@@ -401,15 +423,17 @@ class App:
             "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe",
             "SystemSettings.exe"
         ]
-        current = {
+
+        current_process = {
             "chrome": "chrome.exe",
             "edge": "msedge.exe",
             "firefox": "firefox.exe"
         }[self.browser_type]
-        for proc in psutil.process_iter(['pid', 'name', 'exe']):
+
+        for proc in psutil.process_iter(['pid', 'name']):
             try:
                 name = proc.info['name'].lower()
-                if name in [f.lower() for f in forbidden] and name != current:
+                if name in [f.lower() for f in forbidden] and name != current_process.lower():
                     try:
                         proc.terminate()
                     except (psutil.AccessDenied, psutil.NoSuchProcess):
@@ -421,77 +445,87 @@ class App:
         while self.is_running:
             try:
                 if not self.verify_browser_process_active():
-                    if self.main_window.winfo_exists():
+                    if hasattr(self, 'main_window') and self.main_window.winfo_exists():
                         self.main_window.after(0, self.safe_shutdown)
                     break
                 self.close_unauthorized_tabs()
-                if self.browser_driver:
-                    self.browser_driver.switch_to.window(self.browser_driver.window_handles[0])
-                    self.validate_current_url()
+                self.validate_current_url()
+
             except Exception as e:
-                print(f"Ошибка мониторинга: {e}")
+                print(f"Ошибка мониторинга вкладок: {e}")
             time.sleep(0.4)
 
     def safe_shutdown(self):
         try:
-            if self.main_window and self.main_window.winfo_exists():
-                self.main_window.destroy()
-            if hasattr(self, 'mutex') and self.mutex:
-                ctypes.windll.kernel32.CloseHandle(self.mutex)
-            if hasattr(self, 'mutex2') and self.mutex2:
-                ctypes.windll.kernel32.CloseHandle(self.mutex2)
-
+            self.is_running = False
+            time.sleep(0.4)
+            with self.driver_lock:
+                if self.browser_driver:
+                    try:
+                        self.browser_driver.quit()
+                    except Exception as e:
+                        print(f"Ошибка при закрытии драйвера: {e}")
+                    finally:
+                        self.browser_driver = None
+            if hasattr(self, 'browser_lock_mutex') and self.browser_lock_mutex:
+                ctypes.windll.kernel32.CloseHandle(self.browser_lock_mutex)
             if not self.flag:
                 password = hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()
             else:
                 password = RAMWORKER.read_sldid_file("data")
-
-            self.is_running = False
+            if hasattr(self, 'main_window') and self.main_window.winfo_exists():
+                self.main_window.quit()
+                self.main_window.destroy()
             process_blocker.ProcessBlocker(password=password, is_notrestarted=True)
         except Exception as e:
-            print(f"Ошибка при закрытии: {e}")
-
+            print(f"Критическая ошибка при закрытии: {e}")
     def close_unauthorized_tabs(self):
-        if self.verify_browser_process_active() and len(self.browser_driver.window_handles) > 1:
-            for handle in self.browser_driver.window_handles[1:]:
-                try:
-                    self.browser_driver.switch_to.window(handle)
-                    self.browser_driver.execute_script("window.close();")
-                except:
-                    pass
-
-    def validate_current_url(self):
-        try:
-            if not self.verify_browser_process_active():
+        with self.driver_lock:
+            if not self.browser_driver:
                 return
-            current_url = self.browser_driver.current_url
-            if current_url.startswith("file://"):
-                decoded_url = unquote(current_url)
-                actual_path = urlparse(decoded_url).path.lstrip('/')
-                expected_path = os.path.abspath(self.html_path).replace("\\", "/")
-                actual_path_abs = os.path.abspath(actual_path).replace("\\", "/")
-                if expected_path == actual_path_abs:
-                    return
-                else:
-                    self.browser_driver.execute_script("window.stop();")
+            try:
+                if len(self.browser_driver.window_handles) > 1:
+                    main_handle = self.browser_driver.window_handles[0]
+                    for handle in self.browser_driver.window_handles[1:]:
+                        try:
+                            self.browser_driver.switch_to.window(handle)
+                            self.browser_driver.close()
+                        except Exception as e:
+                            print(f"Ошибка закрытия вкладки: {e}")
+                    if main_handle in self.browser_driver.window_handles:
+                        self.browser_driver.switch_to.window(main_handle)
+            except Exception as e:
+                print(f"Ошибка в close_unauthorized_tabs: {e}")
+    def validate_current_url(self):
+        with self.driver_lock:
+            if not self.browser_driver:
+                return
+            try:
+                current_url = self.browser_driver.current_url
+                if current_url.startswith("file://"):
+                    decoded_url = unquote(current_url)
+                    actual_path = urlparse(decoded_url).path.lstrip('/')
+                    expected_path = os.path.abspath(self.html_path).replace("\\", "/")
+                    actual_path_abs = os.path.abspath(actual_path).replace("\\", "/")
+                    if expected_path == actual_path_abs:
+                        return
+                    else:
+                        self.browser_driver.get(self.local_page_url)
+                        return
+                parsed_url = urlparse(current_url)
+                domain = parsed_url.netloc.split(':')[0]
+                normalized_domain = domain[4:] if domain.startswith('www.') else domain
+                domain_allowed = any(
+                    allowed_domain == normalized_domain or
+                    allowed_domain == domain or
+                    f"www.{allowed_domain}" == domain or
+                    idna.encode(allowed_domain).decode('ascii') == normalized_domain
+                    for allowed_domain in self.whitelisted_domains
+                )
+                if not domain_allowed:
                     self.browser_driver.get(self.local_page_url)
-                    return
-            parsed_url = urlparse(current_url)
-            domain = parsed_url.netloc.split(':')[0]
-            normalized_domain = domain[4:] if domain.startswith('www.') else domain
-            domain_allowed = any(
-                allowed_domain == normalized_domain or
-                allowed_domain == domain or
-                f"www.{allowed_domain}" == domain or
-                idna.encode(allowed_domain).decode('ascii') == normalized_domain
-                for allowed_domain in self.whitelisted_domains
-            )
-            if not domain_allowed:
-                self.browser_driver.execute_script("window.stop();")
-                self.browser_driver.get(self.local_page_url)
-        except:
-            self.browser_driver = None
-
+            except Exception as e:
+                print(f"Ошибка проверки URL: {e}")
     def terminate_unauthorized_instances(self):
         if self.browser_type == "firefox":
             try:
@@ -517,19 +551,15 @@ class App:
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                 try:
                     if binary in proc.info['name'].lower():
-                        cmdline = proc.info['cmdline']
-                        if cmdline and any(self.user_data_dir in arg for arg in cmdline):
-                            pass
-                        else:
+                        cmdline = proc.info['cmdline'] or []
+                        if not any(self.user_data_dir in str(arg) for arg in cmdline):
                             proc.terminate()
                 except:
                     continue
-
-
 def main(browser_type):
     RAMWORKER.write_sldid_file("browser", browser_type)
     main_window = Tk()
-    main_window.lift()
+    main_window.withdraw()
     if not RAMWORKER.read_sldid_file("config"):
         checkbox_var = BooleanVar(value=False)
     main_window.title("soldi")
@@ -538,25 +568,20 @@ def main(browser_type):
     switch_info = False
     unlock_password = ""
     secret_combo = ""
-
     main_window.configure(bg='#f0f2f5')
-
+    main_window.attributes('-fullscreen', True)
     container = Frame(main_window, bg='#ffffff', padx=40, pady=40)
     container.place(relx=0.5, rely=0.5, anchor=CENTER)
-
     header_frame = Frame(container, bg='#ffffff')
     header_frame.pack(pady=(0, 30))
-
     domain_label = Label(header_frame,
                          text="Введите допустимые ссылки для посещения",
                          font=("Arial", 18, 'bold'),
                          fg="#2c3e50",
                          bg="#ffffff")
     domain_label.pack()
-
     input_frame = Frame(container, bg='#ffffff')
     input_frame.pack(pady=(0, 10))
-
     domain_entry = Entry(input_frame,
                          font=("Arial", 18),
                          bd=2,
@@ -568,10 +593,8 @@ def main(browser_type):
                          highlightthickness=2,
                          highlightbackground="black")
     domain_entry.pack(ipady=8, padx=10)
-
     buttons_frame = Frame(container, bg='#ffffff')
     buttons_frame.pack()
-
     def validate_domain_trustworthiness(url):
         trusted_tlds = {'com', 'org', 'net', 'gov', 'edu', 'io', 'co', 'ai', 'biz', 'ru', 'su', 'us', 'uk', 'de', 'рф',
                         'me', 'mit', 'il', 'by', 'kz', 'eu', 'gb', 'fr', 'it', 'es', 'pt', 'nl', 'pl',
@@ -583,64 +606,58 @@ def main(browser_type):
             return False
         tld = parts[-1].lower()
         return tld in trusted_tlds
-
     def del_web_site():
         try:
-            info_site = whitelisted_domains[-1]
-
-            whitelisted_domains.pop()
-            bad_label = Label(input_frame,
-                              text=f"Ссылка {info_site} удалена!",
-                              fg="#F4A900",
-                              bg="#ffffff",
-                              font=("Arial", 12))
-
-        except Exception:
-            bad_label = Label(input_frame,
-                              text=f"Ссылки отсутствуют, удалять нечего!",
-                              fg="#F4A900",
-                              bg="#ffffff",
-                              font=("Arial", 12))
-        bad_label.pack()
-        reject_button.config(state="disabled")
-        main_window.after(1000, lambda: [reject_button.config(state="normal"), bad_label.destroy()])
-
-    def del_all():
-        if whitelisted_domains != []:
-            for i in range(len(whitelisted_domains)):
+            if whitelisted_domains:
+                info_site = whitelisted_domains[-1]
                 whitelisted_domains.pop()
-            bad_label = Label(input_frame,
-                              text=f"Список был полностью очищен",
-                              fg="#F4A900",
-                              bg="#ffffff",
-                              font=("Arial", 12))
+                bad_label = Label(input_frame,
+                                  text=f"Ссылка {info_site} удалена!",
+                                  fg="#F4A900",
+                                  bg="#ffffff",
+                                  font=("Arial", 12))
+            else:
+                bad_label = Label(input_frame,
+                                  text=f"Ссылки отсутствуют, удалять нечего!",
+                                  fg="#F4A900",
+                                  bg="#ffffff",
+                                  font=("Arial", 12))
+            bad_label.pack()
+            reject_button.config(state="disabled")
+            main_window.after(1000, lambda: [reject_button.config(state="normal"), bad_label.destroy()])
+        except Exception as e:
+            print(f"Ошибка удаления сайта: {e}")
+    def del_all():
+        try:
+            if whitelisted_domains:
+                whitelisted_domains.clear()
+                bad_label = Label(input_frame,
+                                  text=f"Список был полностью очищен",
+                                  fg="#F4A900",
+                                  bg="#ffffff",
+                                  font=("Arial", 12))
+            else:
+                bad_label = Label(input_frame,
+                                  text=f"Список пуст, удалять нечего",
+                                  fg="#F4A900",
+                                  bg="#ffffff",
+                                  font=("Arial", 12))
             bad_label.pack()
             del_all_button.config(state="disabled")
-        else:
-            bad_label = Label(input_frame,
-                              text=f"Список пуст, удалять нечего",
-                              fg="#F4A900",
-                              bg="#ffffff",
-                              font=("Arial", 12))
-            bad_label.pack()
-            del_all_button.config(state="disabled")
-        main_window.after(1000, lambda: [del_all_button.config(state="normal"), bad_label.destroy()])
-
+            main_window.after(1000, lambda: [del_all_button.config(state="normal"), bad_label.destroy()])
+        except Exception as e:
+            print(f"Ошибка очистки списка: {e}")
     def add_allowed_website():
         def des_and_conf():
             bad_label.destroy()
             confirm_button.config(state="normal")
-
         domain = domain_entry.get().strip()
         if not domain:
             return
-
         if domain.startswith(('http://', 'https://')):
             domain = domain.split('://')[1]
-
         domain = domain.split('/')[0]
         normalized_domain = domain[4:] if domain.startswith('www.') else domain
-
         if validate_domain_trustworthiness(normalized_domain):
             if normalized_domain not in whitelisted_domains:
                 whitelisted_domains.append(normalized_domain)
@@ -672,7 +689,6 @@ def main(browser_type):
                               font=("Arial", 12))
             bad_label.pack()
             main_window.after(2000, des_and_conf)
-
     def prompt_for_password_setup(flag=False):
         nonlocal switch_info
         if not whitelisted_domains and not flag:
@@ -693,9 +709,8 @@ def main(browser_type):
                                activeforeground="white")
             domain_label.config(text="Придумайте надёжный пароль\nдля отключения программы")
             next_button.pack(pady=(0, 5))
-
     def set_unlock_password():
-        nonlocal whitelisted_domains, unlock_password, checkbox_var
+        nonlocal whitelisted_domains, unlock_password
         if switch_info:
             whitelisted_domains = RAMWORKER.read_sldid_file("session").split()
         unlock_password = domain_entry.get()
@@ -704,7 +719,6 @@ def main(browser_type):
         else:
             domain_entry.delete(0, END)
             prompt_for_secret_combo()
-
     def prompt_for_secret_combo():
         valid_keys = [
             'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
@@ -717,7 +731,6 @@ def main(browser_type):
             text="Введите секретную комбинацию клавиш для выхода\n(5 клавиш через +)\nИли нажмите 'ОТКАЗАТЬСЯ'")
         next_button.config(text="ДОБАВИТЬ КОМБИНАЦИЮ",
                            command=set_secret_combo)
-
         for widget in buttons_frame.winfo_children():
             if widget not in [next_button]:
                 widget.destroy()
@@ -760,12 +773,10 @@ def main(browser_type):
                            fg="white",
                            command=lambda: main_window.destroy()
                            )
-
         skip_button.pack(pady=(0, 10), fill=X)
         next_button.pack(pady=(0, 10), fill=X)
         check_allowed.pack(pady=(0, 10), fill=X)
         exit_butn.pack(pady=(0, 10), fill=X)
-
     def validate_key_combo(combo):
         valid_keys = {
             'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
@@ -774,33 +785,26 @@ def main(browser_type):
             'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
             'shift', 'ctrl', 'alt'
         }
-
         keys = combo.lower().split('+')
         if len(keys) != len(set(keys)):
             return False
-
         for key in keys:
             if key.strip() not in valid_keys:
                 return False
         return True
-
     def set_secret_combo():
         nonlocal secret_combo
         combo_input = domain_entry.get().strip()
-
         if not combo_input:
             ctypes.windll.user32.MessageBoxW(0, "Введите комбинацию клавиш", "Ошибка", 0x0000 | 0x0010 | 0x1000)
             return
-
         if '+' not in combo_input:
             combo_input = combo_input.replace(' ', '+')
-
         keys = combo_input.split('+')
         if len(keys) < 5 or len(keys) > 5:
             ctypes.windll.user32.MessageBoxW(0, "Комбинация должна содержать ровно 5 клавиш", "Ошибка",
                                              0x0000 | 0x0010 | 0x1000)
             return
-
         if len(keys) != len(set(keys)):
             ctypes.windll.user32.MessageBoxW(0, "Комбинация содержит повторяющиеся клавиши", "Ошибка",
                                              0x0000 | 0x0010 | 0x1000)
@@ -810,36 +814,29 @@ def main(browser_type):
             ctypes.windll.user32.MessageBoxW(0, "Комбинация содержит недопустимые клавиши", "Ошибка",
                                              0x0000 | 0x0010 | 0x1000)
             return
-
         secret_combo = combo_input
         RAMWORKER.write_sldid_file("SC", secret_combo.lower())
         finalize_setup()
-
     def skip_secret_combo():
         finalize_setup()
-
     def finalize_setup():
-        nonlocal whitelisted_domains, unlock_password, checkbox_var
+        nonlocal whitelisted_domains, unlock_password
         time_limit = RAMWORKER.read_sldid_file("config")
         main_window.destroy()
         write_session(whitelisted_domains)
         if not RAMWORKER.read_sldid_file("config"):
             RAMWORKER.write_sldid_file("status", str(checkbox_var.get()))
         App(whitelisted_domains, unlock_password, time_limit, browser_type, False)
-
     def write_session(whitelist):
         RAMWORKER.write_sldid_file("session", " ".join(whitelist))
-
     def restore_session():
         if RAMWORKER.read_sldid_file("session") == "":
             ctypes.windll.user32.MessageBoxW(0, "Файл сессии не найден", "Ошибка", 0x0000 | 0x0010 | 0x1000)
         else:
             prompt_for_password_setup(True)
-
     if not RAMWORKER.read_sldid_file("config"):
         style = ttk.Style()
         style.theme_use('alt')
-
         style.configure('TCheckbutton',
                         font=('Arial', 15),
                         indicatorsize=16,
@@ -847,7 +844,6 @@ def main(browser_type):
                         background='white',
                         foreground='black'
                         )
-
         checkbox = ttk.Checkbutton(
             buttons_frame,
             text="Разрешить восстанавливать браузер",
@@ -855,9 +851,7 @@ def main(browser_type):
             style='TCheckbutton',
             takefocus=0
         )
-
         checkbox.pack(pady=5, anchor='w')
-
     confirm_button = Button(buttons_frame,
                             text="ДОБАВИТЬ ССЫЛКУ",
                             font=("Arial", 14, 'bold'),
@@ -944,5 +938,5 @@ def main(browser_type):
                          fg="#757575",
                          bg="#ffffff")
     footer_label.pack()
-    main_window.attributes('-fullscreen', True)
+    main_window.deiconify()
     main_window.mainloop()

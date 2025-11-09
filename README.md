@@ -1,5 +1,5 @@
-# SOLDI 
-**приложение для контроля браузера**
+# СОЛДИ 
+**Система Ограничения Личного Доступа в Интернет**
 
 [![Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Selenium](https://img.shields.io/badge/Selenium-43B02A?logo=selenium&logoColor=white)](https://selenium.dev)
