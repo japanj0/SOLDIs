@@ -345,6 +345,9 @@ class App:
                 options.add_argument("--ignore-certificate-errors")
                 options.set_preference("app.update.auto", False)
                 options.set_preference("app.update.enabled", False)
+                options.set_preference("devtools.policy.disabled", True)
+                options.set_preference("devtools.chrome.enabled", False)
+                options.set_preference("devtools.debugger.remote-enabled", False)
                 service = FirefoxService()
                 self.browser_driver = webdriver.Firefox(options=options, service=service)
 
