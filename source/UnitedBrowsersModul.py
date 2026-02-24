@@ -13,6 +13,7 @@ import process_blocker
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import RAMWORKER
+import arcade
 from urllib.parse import *
 from tkinter import ttk
 import idna
@@ -117,8 +118,8 @@ class App:
             if self.browser_driver:
                 try:
                     self.browser_driver.get(self.local_page_url)
-                except Exception as e:
-                    print(f"Ошибка возврата на главную: {e}")
+                except Exception:
+                    pass
 
     def create_browser_lock_mutex(self):
         mutex_name = {
@@ -357,8 +358,7 @@ class App:
             self.browser_driver.maximize_window()
             RAMWORKER.add_to_autostart("Soldi")
 
-        except Exception as e:
-            print(f"Ошибка запуска браузера: {e}")
+        except Exception:
             self.browser_driver = None
 
     def verify_browser_process_active(self):
@@ -369,7 +369,6 @@ class App:
                 current_url = self.browser_driver.current_url
                 return True
             except (WebDriverException, Exception) as e:
-                print(f"Драйвер неактивен: {e}")
                 self.browser_driver = None
                 return False
 
@@ -389,11 +388,11 @@ class App:
                                     window.restore()
                                 if not window.isMaximized:
                                     window.maximize()
-                    except Exception as e:
-                        print(f"Ошибка управления окном: {e}")
+                    except Exception:
+                        pass
 
-            except Exception as e:
-                print(f"Ошибка в enforce_security_restrictions: {e}")
+            except Exception:
+                pass
             time.sleep(0.4)
 
     def terminate_explorer_safelly(self):
@@ -424,7 +423,7 @@ class App:
             "tasklist.exe", "systeminfo.exe", "whoami.exe", "net.exe", "ipconfig.exe",
             "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
             "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe",
-            "SystemSettings.exe"
+            "SystemSettings.exe", "resmon.exe"
         ]
 
         current_process = {
@@ -454,8 +453,8 @@ class App:
                 self.close_unauthorized_tabs()
                 self.validate_current_url()
 
-            except Exception as e:
-                print(f"Ошибка мониторинга вкладок: {e}")
+            except Exception:
+                pass
             time.sleep(0.4)
 
     def safe_shutdown(self):
@@ -466,8 +465,8 @@ class App:
                 if self.browser_driver:
                     try:
                         self.browser_driver.quit()
-                    except Exception as e:
-                        print(f"Ошибка при закрытии драйвера: {e}")
+                    except Exception:
+                        pass
                     finally:
                         self.browser_driver = None
             if hasattr(self, 'browser_lock_mutex') and self.browser_lock_mutex:
@@ -480,8 +479,8 @@ class App:
                 self.main_window.quit()
                 self.main_window.destroy()
             process_blocker.ProcessBlocker(password=password, is_notrestarted=True)
-        except Exception as e:
-            print(f"Критическая ошибка при закрытии: {e}")
+        except Exception:
+            pass
     def close_unauthorized_tabs(self):
         with self.driver_lock:
             if not self.browser_driver:
@@ -493,12 +492,12 @@ class App:
                         try:
                             self.browser_driver.switch_to.window(handle)
                             self.browser_driver.close()
-                        except Exception as e:
-                            print(f"Ошибка закрытия вкладки: {e}")
+                        except Exception:
+                            pass
                     if main_handle in self.browser_driver.window_handles:
                         self.browser_driver.switch_to.window(main_handle)
-            except Exception as e:
-                print(f"Ошибка в close_unauthorized_tabs: {e}")
+            except Exception:
+                pass
     def validate_current_url(self):
         with self.driver_lock:
             if not self.browser_driver:
@@ -527,8 +526,8 @@ class App:
                 )
                 if not domain_allowed:
                     self.browser_driver.get(self.local_page_url)
-            except Exception as e:
-                print(f"Ошибка проверки URL: {e}")
+            except Exception:
+                pass
     def terminate_unauthorized_instances(self):
         if self.browser_type == "firefox":
             try:
@@ -628,8 +627,8 @@ def main(browser_type):
             bad_label.pack()
             reject_button.config(state="disabled")
             main_window.after(1000, lambda: [reject_button.config(state="normal"), bad_label.destroy()])
-        except Exception as e:
-            print(f"Ошибка удаления сайта: {e}")
+        except Exception:
+            pass
     def del_all():
         try:
             if whitelisted_domains:
@@ -648,8 +647,8 @@ def main(browser_type):
             bad_label.pack()
             del_all_button.config(state="disabled")
             main_window.after(1000, lambda: [del_all_button.config(state="normal"), bad_label.destroy()])
-        except Exception as e:
-            print(f"Ошибка очистки списка: {e}")
+        except Exception:
+            pass
     def add_allowed_website():
         def des_and_conf():
             bad_label.destroy()
@@ -829,7 +828,13 @@ def main(browser_type):
         write_session(whitelisted_domains)
         if not RAMWORKER.read_sldid_file("config"):
             RAMWORKER.write_sldid_file("status", str(checkbox_var.get()))
-        App(whitelisted_domains, unlock_password, time_limit, browser_type, False)
+        if browser_type!="arcade":
+            App(whitelisted_domains, unlock_password, time_limit, browser_type, False)
+        else:
+            if not RAMWORKER.read_sldid_file("config"):
+                RAMWORKER.write_sldid_file("status", str(checkbox_var.get()))
+            arcade.run_arcade(whitelisted_domains, unlock_password, time_limit, browser_type, False)
+
     def write_session(whitelist):
         RAMWORKER.write_sldid_file("session", " ".join(whitelist))
     def restore_session():

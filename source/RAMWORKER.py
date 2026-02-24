@@ -106,8 +106,7 @@ def get_icon_path(relative_path):
         with open(resource_path, 'rb') as src, open(temp_path, 'wb') as dst:
             dst.write(src.read())
         return temp_path
-    except Exception as e:
-        print(f"Ошибка при извлечении изображения: {e}")
+    except Exception:
         return None
 
 

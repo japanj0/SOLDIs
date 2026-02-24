@@ -10,10 +10,12 @@ import keyboard
 import shutil
 import win32gui
 import win32con
+import arcade
 
 
 class ProcessBlocker:
     def __init__(self, password, is_notrestarted):
+
         self.password = password
         self.is_notrestarted = is_notrestarted
         self.running = True
@@ -34,7 +36,7 @@ class ProcessBlocker:
             "tasklist.exe", "systeminfo.exe", "whoami.exe", "net.exe", "ipconfig.exe",
             "hxd.exe", "hexedit.exe", "010editor.exe", "winhex.exe", "resourcehacker.exe",
             "dnspy.exe", "ilspy.exe", "peid.exe", "cffexplorer.exe", "dependencywalker.exe",
-            "SystemSettings.exe"
+            "SystemSettings.exe", "resmon.exe"
         ]
         RAMWORKER.clearing_RAM(['geckodriver.exe', 'chromedriver.exe', 'msedgedriver.exe'])
         self.monitor_thread = threading.Thread(target=self.monitor_processes, daemon=True).start()
@@ -68,7 +70,7 @@ class ProcessBlocker:
         RAMWORKER.clearing_RAM()
 
     def cleanup(self):
-        temp_dir = r"C:\Temp"
+        temp_dir = f"C:\\Temp"
         if os.path.exists(temp_dir):
             for item in os.listdir(temp_dir):
                 if item.startswith(("EdgePythonProfile_", "ChromePythonProfile_", "FirefoxPythonProfile_")):
@@ -115,6 +117,7 @@ class ProcessBlocker:
                                   padx=30,
                                   pady=10)
         submit_button.pack()
+
         if RAMWORKER.read_sldid_file("status") == "True" and self.is_notrestarted:
             resume_button = tk.Button(content_frame,
                                       text="ВОЗОБНОВИТЬ\nБРАУЗЕР",
@@ -159,12 +162,18 @@ class ProcessBlocker:
                     keyboard.remove_hotkey(self.key_kill)
                 whitelist = session.strip().split()
                 self.running = False
-                self.root.after(0, lambda: [
-                    self.root.destroy(),
-                    UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)
-                ])
-        except Exception as e:
-            print(f"Ошибка при восстановлении браузера: {e}")
+                if browser == "arcade":
+                    self.root.after(0, lambda: [
+                        self.root.destroy(),
+                        arcade.run_arcade(whitelist, password, time_limit, browser, True)
+                    ])
+                else:
+                    self.root.after(0, lambda: [
+                        self.root.destroy(),
+                        UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)
+                    ])
+        except Exception:
+            pass
 
     def monitor_processes(self):
         while self.running:
