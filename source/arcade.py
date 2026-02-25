@@ -36,7 +36,7 @@ class ArcadeBrowser(QMainWindow):
         if not self.flag:
             self.hashed = hashlib.sha256(self.unlock_password.encode('utf-8')).hexdigest()
             RAMWORKER.write_sldid_file("data", self.hashed)
-            del self.unlock_password
+
         if time_limit and time_limit != "":
             self.remaining_time = int(time_limit) * 60
         else:
@@ -44,6 +44,7 @@ class ArcadeBrowser(QMainWindow):
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.html_path = os.path.join(self.script_dir, "links.html")
         self.local_page_url = self.generate_allowed_sites_html()
+        RAMWORKER.add_to_autostart("Soldi")
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
@@ -358,7 +359,7 @@ class ArcadeBrowser(QMainWindow):
         if not self.flag:
             password = self.hashed
         else:
-            password = RAMWORKER.read_sldid_file("data")
+            password = self.unlock_password
         p = multiprocessing.Process(
             target=process_blocker.ProcessBlocker,
             args=(password,),
@@ -378,7 +379,7 @@ class ArcadeBrowser(QMainWindow):
         if not self.flag:
             password = self.hashed
         else:
-            password = RAMWORKER.read_sldid_file("data")
+            password = self.unlock_password
         p = multiprocessing.Process(
             target=process_blocker.ProcessBlocker,
             args=(password,),

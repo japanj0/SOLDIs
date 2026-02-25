@@ -11,7 +11,7 @@ import shutil
 import win32gui
 import win32con
 import arcade
-
+import ctypes
 
 class ProcessBlocker:
     def __init__(self, password, is_notrestarted):
@@ -47,6 +47,7 @@ class ProcessBlocker:
         self.root = tk.Tk()
         self.root.iconbitmap(RAMWORKER.get_icon_path("icon.ico"))
         self.root.title("soldi")
+
         self.root.protocol("WM_DELETE_WINDOW", lambda: None)
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='#1a1a1a')
@@ -118,8 +119,8 @@ class ProcessBlocker:
                                   pady=10)
         submit_button.pack()
 
-        if RAMWORKER.read_sldid_file("status") == "True" and self.is_notrestarted:
-            resume_button = tk.Button(content_frame,
+
+        resume_button = tk.Button(content_frame,
                                       text="ВОЗОБНОВИТЬ\nБРАУЗЕР",
                                       font=("Arial", 16, 'bold'),
                                       command=self.resume_browser,
@@ -131,7 +132,7 @@ class ProcessBlocker:
                                       relief='flat',
                                       padx=29,
                                       pady=10)
-            resume_button.pack(pady=(10, 0))
+        resume_button.pack(pady=(10, 0))
 
         separator = tk.Frame(content_frame, height=2, bg="#4b6cb7", bd=0)
         separator.pack(fill='x', pady=20)
@@ -151,29 +152,37 @@ class ProcessBlocker:
             self.emergency_exit()
 
     def resume_browser(self):
-        try:
-            session = RAMWORKER.read_sldid_file("session")
-            password = RAMWORKER.read_sldid_file("data")
-            time_limit = RAMWORKER.read_sldid_file("config")
-            browser = RAMWORKER.read_sldid_file("browser")
+        if RAMWORKER.read_sldid_file("status") == "True":
+            try:
+                session = RAMWORKER.read_sldid_file("session")
+                password = RAMWORKER.read_sldid_file("data")
+                time_limit = RAMWORKER.read_sldid_file("config")
+                browser = RAMWORKER.read_sldid_file("browser")
 
-            if session and password:
-                if RAMWORKER.read_sldid_file("SC"):
-                    keyboard.remove_hotkey(self.key_kill)
-                whitelist = session.strip().split()
-                self.running = False
-                if browser == "arcade":
-                    self.root.after(0, lambda: [
-                        self.root.destroy(),
-                        arcade.run_arcade(whitelist, password, time_limit, browser, True)
-                    ])
-                else:
-                    self.root.after(0, lambda: [
-                        self.root.destroy(),
-                        UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)
-                    ])
-        except Exception:
-            pass
+                if session and password:
+                    if RAMWORKER.read_sldid_file("SC"):
+                        keyboard.remove_hotkey(self.key_kill)
+                    whitelist = session.strip().split()
+                    self.running = False
+                    if browser == "arcade":
+                        self.root.after(0, lambda: [
+                            self.root.destroy(),
+                            arcade.run_arcade(whitelist, password, time_limit, browser, True)
+                        ])
+                    else:
+                        self.root.after(0, lambda: [
+                            self.root.destroy(),
+                            UnitedBrowsersModul.App(whitelist, password, time_limit, browser, True)
+                            ])
+            except Exception:
+                pass
+        else:
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                f"Настройки СОЛДИ не позволяют запустить этот браузер вновь",
+                "Ошибка!",
+                0x10 | 0x0
+            )
 
     def monitor_processes(self):
         while self.running:
